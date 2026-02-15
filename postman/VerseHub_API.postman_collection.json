@@ -1,0 +1,890 @@
+{
+    "info": {
+        "_postman_id": "verse-hub-api",
+        "name": "VerseHub API",
+        "description": "API for the VerseHub application - A community-driven Bible verse classification system",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Get User",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/user",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "user"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Bible Versions",
+            "item": [
+                {
+                    "name": "Get All Bible Versions",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible-versions",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible-versions"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Bible Version",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible-versions/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible-versions", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Bible Version",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"slug\": \"acf\",\n    \"name\": \"Almeida Corrigida Fiel\",\n    \"language\": \"pt\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/bible-versions",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible-versions"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Bible Version",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"New International Version (Updated)\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/bible-versions/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible-versions", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Bible Version",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible-versions/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible-versions", "1"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Categories",
+            "item": [
+                {
+                    "name": "Get All Categories",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/categories",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "categories"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Category",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/categories/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "categories", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Category",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Grace\",\n    \"description\": \"Verses about God's grace and mercy\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/categories",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "categories"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Category",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"description\": \"Updated description about grace\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/categories/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "categories", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Category",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/categories/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "categories", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Top Verses for Category",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/categories/1/top-verses",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "categories", "1", "top-verses"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Verses",
+            "item": [
+                {
+                    "name": "Get All Verses",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/verses?per_page=10",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verses"],
+                            "query": [
+                                {
+                                    "key": "per_page",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Verse",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/verses/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verses", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Verse (Auth Required)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"book\": \"John\",\n    \"chapter\": 3,\n    \"verse_start\": 16,\n    \"version_id\": 1,\n    \"external_id\": \"JHN.3.16\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/verses",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verses"]
+                        }
+                    }
+                },
+                {
+                    "name": "Search Verses",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/verses/search?book=John&chapter=3&verse_start=16",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verses", "search"],
+                            "query": [
+                                {
+                                    "key": "book",
+                                    "value": "John"
+                                },
+                                {
+                                    "key": "chapter",
+                                    "value": "3"
+                                },
+                                {
+                                    "key": "verse_start",
+                                    "value": "16"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Verses by Category",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/categories/1/verses",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "categories", "1", "verses"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Verse",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"external_id\": \"JHN.3.16.updated\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/verses/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verses", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Verse",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/verses/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verses", "1"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Verse Classifications",
+            "item": [
+                {
+                    "name": "Get My Classifications",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/verse-classifications",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verse-classifications"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Verse Classifications (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/verses/1/classifications",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verses", "1", "classifications"]
+                        }
+                    }
+                },
+                {
+                    "name": "Classify Verse",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"verse_id\": 1,\n    \"category_id\": 1,\n    \"confidence_level\": 5\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/verse-classifications",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verse-classifications"]
+                        }
+                    }
+                },
+                {
+                    "name": "Classify Verse (Alternative)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"category_id\": 1,\n    \"confidence_level\": 4\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/verses/1/classify",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verses", "1", "classify"]
+                        }
+                    }
+                },
+                {
+                    "name": "Remove Classification",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"verse_id\": 1,\n    \"category_id\": 1\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/verse-classifications/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "verse-classifications", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Remove Classification (Alternative)",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/verses/1/classifications/1",
+                            "host": ["{{base_url}}"],
+                            "path": [
+                                "api",
+                                "verses",
+                                "1",
+                                "classifications",
+                                "1"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Check Classification Status",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"verse_id\": 1,\n    \"category_id\": 1\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/check-classification",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "check-classification"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Statistics",
+            "item": [
+                {
+                    "name": "Get Popular Verses",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/popular-verses",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "popular-verses"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Popular Categories",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/popular-categories",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "popular-categories"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Bible API - Direct Access",
+            "item": [
+                {
+                    "name": "Get Full Chapter",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible/nvi/pv/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible", "nvi", "pv", "1"]
+                        },
+                        "description": "Get all verses from Proverbs chapter 1 in NVI version"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Single Verse",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible/nvi/jo/3/16",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible", "nvi", "jo", "3", "16"]
+                        },
+                        "description": "Get John 3:16 in NVI version"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Verse Range",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible/nvi/jo/3/16-17",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible", "nvi", "jo", "3", "16-17"]
+                        },
+                        "description": "Get John 3:16-17 (verse range) in NVI version"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Random Verse",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible/nvi/random",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible", "nvi", "random"]
+                        },
+                        "description": "Get a random verse from NVI version"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Chapter - KJV",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible/kjv/jn/3",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible", "kjv", "jn", "3"]
+                        },
+                        "description": "Get John chapter 3 in King James Version"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Verse - Genesis 1:1",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible/nvi/gn/1/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible", "nvi", "gn", "1", "1"]
+                        },
+                        "description": "Get Genesis 1:1 - In the beginning..."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Psalms 23 (Full)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible/nvi/sl/23",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible", "nvi", "sl", "23"]
+                        },
+                        "description": "Get full Psalm 23 - The Lord is my shepherd"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Romans 8:28-39",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible/nvi/rm/8/28-39",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible", "nvi", "rm", "8", "28-39"]
+                        },
+                        "description": "Get Romans 8:28-39 - Nothing can separate us from God's love"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Random Verse - KJV",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/bible/kjv/random",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "bible", "kjv", "random"]
+                        },
+                        "description": "Get a random verse in English (King James Version)"
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [""]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [""]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://versehub.test",
+            "type": "string"
+        },
+        {
+            "key": "token",
+            "value": "your-sanctum-token-here",
+            "type": "string"
+        }
+    ]
+}

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VerseHub - Google Login Test (JWT)</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 30px;
+            background: #4285f4;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+            margin: 20px 0;
+            cursor: pointer;
+            border: none;
+        }
+        .button:hover {
+            background: #357ae8;
+        }
+        .response {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+        .token {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            word-break: break-all;
+            margin: 10px 0;
+            border: 1px solid #4caf50;
+        }
+        .user-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #2196f3;
+        }
+        .copy-btn {
+            background: #4caf50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .copy-btn:hover {
+            background: #45a049;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ef5350;
+        }
+        .center {
+            text-align: center;
+        }
+        .info {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border: 1px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 VerseHub - Google Login Test (JWT)</h1>
+
+        <div class="info">
+            <strong>Two Ways to Login:</strong>
+            <ol>
+                <li><strong>Google Sign-In Button:</strong> Uses Google's ID token (recommended for SPAs)</li>
+                <li><strong>OAuth Flow:</strong> Traditional redirect flow with authorization code</li>
+            </ol>
+        </div>
+
+        <div class="center">
+            <h3>Method 1: Google Sign-In Button (ID Token)</h3>
+            <div id="g_id_onload"
+                 data-client_id="154214233282-tspeidd9prsakbsr7aad12v26j0q4o4b.apps.googleusercontent.com"
+                 data-callback="handleCredentialResponse">
+            </div>
+            <div class="g_id_signin" data-type="standard"></div>
+        </div>
+
+        <div class="center" style="margin-top: 40px;">
+            <h3>Method 2: OAuth Redirect Flow</h3>
+            <button class="button" onclick="loginWithGoogleRedirect()">
+                🔑 Sign in with Google (Redirect)
+            </button>
+        </div>
+
+        <div id="response" class="response"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://versehub.test/api/auth';
+
+        // Method 1: Handle Google Sign-In Button callback (ID Token)
+        async function handleCredentialResponse(response) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.style.display = 'block';
+            responseDiv.innerHTML = '<p>Authenticating with Google...</p>';
+
+            try {
+                const result = await fetch(`${API_URL}/google/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id_token: response.credential
+                    })
+                });
+
+                const data = await result.json();
+
+                if (data.success) {
+                    displaySuccess(data);
+                } else {
+                    displayError(data.message || 'Authentication failed');
+                }
+            } catch (error) {
+                displayError('Error: ' + error.message);
+            }
+        }
+
+        // Method 2: OAuth Redirect Flow
+        async function loginWithGoogleRedirect() {
+            try {
+                const response = await fetch(`${API_URL}/google/redirect`);
+                const data = await response.json();
+                
+                if (data.success && data.data.url) {
+                    window.location.href = data.data.url;
+                } else {
+                    displayError('Failed to get Google authorization URL');
+                }
+            } catch (error) {
+                displayError('Error: ' + error.message);
+            }
+        }
+
+        // Handle OAuth callback (when user is redirected back)
+        async function handleOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code) {
+                const responseDiv = document.getElementById('response');
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = '<p>Processing Google authentication...</p>';
+
+                try {
+                    const result = await fetch(`${API_URL}/google/callback?code=${code}`);
+                    const data = await result.json();
+
+                    if (data.success) {
+                        displaySuccess(data);
+                        // Clean up URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    } else {
+                        displayError(data.message || 'Authentication failed');
+                    }
+                } catch (error) {
+                    displayError('Error: ' + error.message);
+                }
+            }
+        }
+
+        function displaySuccess(data) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.innerHTML = `
+                <h3 style="color: #4caf50;">✅ Authentication Successful!</h3>
+                
+                <div class="user-info">
+                    <h4>User Information:</h4>
+                    <p><strong>Name:</strong> ${data.data.user.name}</p>
+                    <p><strong>Email:</strong> ${data.data.user.email}</p>
+                    <p><strong>Google ID:</strong> ${data.data.user.google_id}</p>
+                    ${data.data.user.avatar ? `<p><img src="${data.data.user.avatar}" alt="Avatar" style="width: 50px; height: 50px; border-radius: 50%;"></p>` : ''}
+                </div>
+
+                <div class="token">
+                    <h4>JWT Token:</h4>
+                    <p style="font-size: 12px; margin: 10px 0;">${data.data.token}</p>
+                    <p><strong>Type:</strong> ${data.data.token_type}</p>
+                    <p><strong>Expires in:</strong> ${data.data.expires_in} seconds (${Math.floor(data.data.expires_in / 60)} minutes)</p>
+                    <button class="copy-btn" onclick="copyToken('${data.data.token}')">📋 Copy Token</button>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button class="button" onclick="testAuthenticatedRequest('${data.data.token}')">
+                        🧪 Test Authenticated Request
+                    </button>
+                </div>
+            `;
+        }
+
+        function displayError(message) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.innerHTML = `
+                <div class="error">
+                    <h3>❌ Authentication Failed</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        function copyToken(token) {
+            navigator.clipboard.writeText(token).then(() => {
+                alert('Token copied to clipboard!');
+            });
+        }
+
+        async function testAuthenticatedRequest(token) {
+            try {
+                const response = await fetch(`${API_URL}/user`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Authenticated request successful!\n\nUser: ' + data.data.user.name);
+                } else {
+                    alert('❌ Request failed: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Check if we're coming back from OAuth redirect
+        window.onload = handleOAuthCallback;
+    </script>
+</body>
+</html>
+
+        function loginWithGoogle() {
+            window.location.href = API_URL + '/google';
+        }
+
+        // Check if we're coming back from OAuth
+        window.onload = function() {
+            // The callback will return JSON directly
+            // We need to check if there's data in the URL or if the page shows JSON
+            const bodyText = document.body.textContent;
+
+            try {
+                // Try to parse if the whole page is JSON (from API response)
+                const jsonMatch = bodyText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    const data = JSON.parse(jsonMatch[0]);
+                    displayResponse(data);
+                }
+            } catch (e) {
+                console.log('Not a JSON response');
+            }
+        };
+
+        function displayResponse(data) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.style.display = 'block';
+
+            if (data.success) {
+                responseDiv.innerHTML = `
+                    <h3>✅ Authentication Successful!</h3>
+
+                    <div class="user-info">
+                        <h4>User Information:</h4>
+                        <p><strong>Name:</strong> ${data.data.user.name}</p>
+                        <p><strong>Email:</strong> ${data.data.user.email}</p>
+                        <p><strong>ID:</strong> ${data.data.user.id}</p>
+                    </div>
+
+                    <div class="token">
+                        <h4>🔑 Authentication Token:</h4>
+                        <p id="token">${data.data.token}</p>
+                        <button class="copy-btn" onclick="copyToken()">📋 Copy Token</button>
+                    </div>
+
+                    <h4>How to use in Postman:</h4>
+                    <ol>
+                        <li>Copy the token above</li>
+                        <li>Open Postman</li>
+                        <li>Click on Environment (top-right)</li>
+                        <li>Edit "VerseHub Development"</li>
+                        <li>Set "token" variable to the copied value</li>
+                        <li>Test with "Get Current User" request</li>
+                    </ol>
+
+                    <button class="button" onclick="testToken('${data.data.token}')">
+                        🧪 Test Token
+                    </button>
+                `;
+            } else {
+                responseDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Authentication Failed</h3>
+                        <p>${data.message || 'Unknown error'}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function copyToken() {
+            const tokenText = document.getElementById('token').textContent;
+            navigator.clipboard.writeText(tokenText).then(() => {
+                alert('✅ Token copied to clipboard!');
+            });
+        }
+
+        async function testToken(token) {
+            try {
+                const response = await fetch(API_URL + '/user', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Token is working! You can now use it in Postman.');
+                } else {
+                    alert('❌ Token test failed: ' + data.message);
+                }
+            } catch (error) {
+                alert('❌ Error testing token: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
