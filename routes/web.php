@@ -13,3 +13,7 @@ Route::get('/privacy', function () {
 Route::get('/terms', function () {
     return view('terms');
 });
+
+Route::get('/delete-account', function () {
+    return view('delete-account');
+});
