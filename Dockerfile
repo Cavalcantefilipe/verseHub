@@ -28,11 +28,15 @@ COPY . .
 # Run post-install scripts
 RUN composer dump-autoload --optimize
 
-# Create storage directories
+# Create storage directories and make start script executable
 RUN mkdir -p storage/framework/{sessions,views,cache/data} \
     && mkdir -p storage/logs \
-    && chmod -R 775 storage bootstrap/cache
+    && chmod -R 775 storage bootstrap/cache \
+    && chmod +x start.sh
+
+# Unset SERVER_PORT to prevent Laravel ServeCommand bug
+ENV SERVER_PORT=""
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "php artisan migrate --force && php -S 0.0.0.0:${PORT:-8080} -t public"]
+CMD ["./start.sh"]
