@@ -146,14 +146,21 @@ class VerseClassificationController extends Controller
 
         $user = Auth::user();
 
-        $classification = PublicClassification::create([
-            'device_id' => 'user-' . $user->id,
-            'user_id' => $user->id,
-            'reference' => $validated['reference'],
-            'text' => $validated['text'],
-            'version' => $validated['version'],
-            'category_ids' => $validated['category_ids'],
-        ]);
+        // Upsert: update if user already classified this reference, otherwise create
+        $classification = PublicClassification::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'reference' => $validated['reference'],
+            ],
+            [
+                'device_id' => 'user-' . $user->id,
+                'text' => $validated['text'],
+                'version' => $validated['version'],
+                'category_ids' => $validated['category_ids'],
+            ]
+        );
+
+        $wasRecentlyCreated = $classification->wasRecentlyCreated;
 
         // Get category details
         $categories = Category::whereIn('id', $validated['category_ids'])->get();
@@ -166,9 +173,51 @@ class VerseClassificationController extends Controller
                 'version' => $classification->version,
                 'categories' => $categories,
                 'created_at' => $classification->created_at,
+                'updated' => !$wasRecentlyCreated,
             ],
-            'message' => 'Classification saved successfully'
-        ], 201);
+            'message' => $wasRecentlyCreated
+                ? 'Classification saved successfully'
+                : 'Classification updated successfully'
+        ], $wasRecentlyCreated ? 201 : 200);
+    }
+
+    /**
+     * Get a user's existing classification for a specific reference.
+     * GET /api/my-classification?reference=...
+     */
+    public function getByReference(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'reference' => 'required|string|max:255',
+        ]);
+
+        $user = Auth::user();
+
+        $classification = PublicClassification::where('user_id', $user->id)
+            ->where('reference', $validated['reference'])
+            ->first();
+
+        if (!$classification) {
+            return response()->json([
+                'data' => null,
+                'message' => 'No classification found for this reference'
+            ]);
+        }
+
+        $categories = Category::whereIn('id', $classification->category_ids)->get();
+
+        return response()->json([
+            'data' => [
+                'id' => $classification->id,
+                'reference' => $classification->reference,
+                'text' => $classification->text,
+                'version' => $classification->version,
+                'categories' => $categories,
+                'category_ids' => $classification->category_ids,
+                'created_at' => $classification->created_at,
+            ],
+            'message' => 'Classification found'
+        ]);
     }
 
     /**

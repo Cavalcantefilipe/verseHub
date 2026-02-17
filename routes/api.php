@@ -85,6 +85,7 @@ Route::get('my-classifications', [VerseClassificationController::class, 'getByDe
 Route::middleware('auth:api')->group(function () {
     Route::post('classify-auth', [VerseClassificationController::class, 'classifyAuth'])->name('classifications.auth');
     Route::get('my-classifications-auth', [VerseClassificationController::class, 'getByUser'])->name('classifications.by-user');
+    Route::get('my-classification', [VerseClassificationController::class, 'getByReference'])->name('classifications.by-reference');
 });
 Route::get('verse-stats', [VerseClassificationController::class, 'getVerseStats'])->name('classifications.verse-stats');
 Route::get('community-feed', [VerseClassificationController::class, 'communityFeed'])->name('classifications.community-feed');
