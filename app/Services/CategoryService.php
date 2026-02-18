@@ -13,7 +13,7 @@ class CategoryService
      */
     public function getAllCategories(): Collection
     {
-        return Category::withCount(['classifications', 'stats'])
+        return Category::withCount(['userVerseCategories as classifications_count'])
             ->orderBy('name')
             ->get();
     }
@@ -64,7 +64,7 @@ class CategoryService
      */
     public function getPopularCategories(int $limit = 10): Collection
     {
-        return Category::withCount('classifications')
+        return Category::withCount('userVerseCategories as classifications_count')
             ->orderBy('classifications_count', 'desc')
             ->limit($limit)
             ->get();

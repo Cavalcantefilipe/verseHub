@@ -52,7 +52,7 @@ class CategoryController extends Controller
      */
     public function show(Category $category): JsonResponse
     {
-        $category->loadCount(['classifications', 'stats']);
+        $category->loadCount(['userVerseCategories as classifications_count']);
 
         return response()->json([
             'data' => $category,
