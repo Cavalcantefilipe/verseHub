@@ -3,8 +3,9 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\BibleVersionController;
-use App\Http\Controllers\VerseController;
+// Legacy controllers — tables renamed to *_off, kept for reference
+// use App\Http\Controllers\BibleVersionController;
+// use App\Http\Controllers\VerseController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\VerseClassificationController;
 use App\Http\Controllers\BibleController;
@@ -37,27 +38,31 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:api');
 
-// Bible Versions (public read, auth required for write)
-Route::get('bible-versions', [BibleVersionController::class, 'index']);
-Route::get('bible-versions/{bible_version}', [BibleVersionController::class, 'show']);
-Route::middleware('auth:api')->group(function () {
-    Route::post('bible-versions', [BibleVersionController::class, 'store']);
-    Route::put('bible-versions/{bible_version}', [BibleVersionController::class, 'update']);
-    Route::patch('bible-versions/{bible_version}', [BibleVersionController::class, 'update']);
-    Route::delete('bible-versions/{bible_version}', [BibleVersionController::class, 'destroy']);
-});
+// ============================================
+// Bible Versions — DISABLED (tables renamed to *_off)
+// ============================================
+// Route::get('bible-versions', [BibleVersionController::class, 'index']);
+// Route::get('bible-versions/{bible_version}', [BibleVersionController::class, 'show']);
+// Route::middleware('auth:api')->group(function () {
+//     Route::post('bible-versions', [BibleVersionController::class, 'store']);
+//     Route::put('bible-versions/{bible_version}', [BibleVersionController::class, 'update']);
+//     Route::patch('bible-versions/{bible_version}', [BibleVersionController::class, 'update']);
+//     Route::delete('bible-versions/{bible_version}', [BibleVersionController::class, 'destroy']);
+// });
 
-// Verses (public read, auth required for creating new verses)
-Route::get('verses', [VerseController::class, 'index']);
-Route::get('verses/{verse}', [VerseController::class, 'show']);
-Route::get('verses/search', [VerseController::class, 'search'])->name('verses.search');
-Route::get('categories/{category}/verses', [VerseController::class, 'byCategory'])->name('verses.by-category');
-Route::middleware('auth:api')->group(function () {
-    Route::post('verses', [VerseController::class, 'store']); // Auth required for creating new verses
-    Route::put('verses/{verse}', [VerseController::class, 'update']);
-    Route::patch('verses/{verse}', [VerseController::class, 'update']);
-    Route::delete('verses/{verse}', [VerseController::class, 'destroy']);
-});
+// ============================================
+// Verses (legacy local DB) — DISABLED (tables renamed to *_off)
+// ============================================
+// Route::get('verses', [VerseController::class, 'index']);
+// Route::get('verses/{verse}', [VerseController::class, 'show']);
+// Route::get('verses/search', [VerseController::class, 'search'])->name('verses.search');
+// Route::get('categories/{category}/verses', [VerseController::class, 'byCategory'])->name('verses.by-category');
+// Route::middleware('auth:api')->group(function () {
+//     Route::post('verses', [VerseController::class, 'store']);
+//     Route::put('verses/{verse}', [VerseController::class, 'update']);
+//     Route::patch('verses/{verse}', [VerseController::class, 'update']);
+//     Route::delete('verses/{verse}', [VerseController::class, 'destroy']);
+// });
 
 // Categories (public read, auth required for write)
 Route::get('categories', [CategoryController::class, 'index']);
@@ -69,13 +74,15 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
 });
 
-// Verse Classifications (all require auth)
-Route::middleware('auth:api')->group(function () {
-    Route::apiResource('verse-classifications', VerseClassificationController::class);
-    Route::post('verses/{verse}/classify', [VerseClassificationController::class, 'store'])->name('verses.classify');
-    Route::delete('verses/{verse}/classifications/{category}', [VerseClassificationController::class, 'destroy'])->name('verses.unclassify');
-    Route::post('check-classification', [VerseClassificationController::class, 'checkClassification'])->name('classifications.check');
-});
+// ============================================
+// Verse Classifications (legacy apiResource) — DISABLED (tables renamed to *_off)
+// ============================================
+// Route::middleware('auth:api')->group(function () {
+//     Route::apiResource('verse-classifications', VerseClassificationController::class);
+//     Route::post('verses/{verse}/classify', [VerseClassificationController::class, 'store'])->name('verses.classify');
+//     Route::delete('verses/{verse}/classifications/{category}', [VerseClassificationController::class, 'destroy'])->name('verses.unclassify');
+//     Route::post('check-classification', [VerseClassificationController::class, 'checkClassification'])->name('classifications.check');
+// });
 
 // Public verse classification (legacy — kept for backwards compatibility, redirects to auth)
 // Route::post('classify', ...); // REMOVED — use classify-auth instead
@@ -92,21 +99,25 @@ Route::middleware('auth:api')->group(function () {
 Route::get('verse-stats', [VerseClassificationController::class, 'getVerseStats'])->name('classifications.verse-stats');
 Route::get('community-feed', [VerseClassificationController::class, 'communityFeed'])->name('classifications.community-feed');
 
-// Public verse classifications view
-Route::get('verses/{verse}/classifications', [VerseClassificationController::class, 'show'])->name('verses.classifications');
+// ============================================
+// Public verse classifications view — DISABLED (uses old verses table)
+// ============================================
+// Route::get('verses/{verse}/classifications', [VerseClassificationController::class, 'show'])->name('verses.classifications');
 
-// Public stats endpoints
-Route::get('popular-verses', function () {
-    return app(\App\Services\VerseService::class)->getPopularVerses();
-})->name('popular-verses');
+// ============================================
+// Public stats endpoints — DISABLED (use old tables: verses, verse_stats)
+// ============================================
+// Route::get('popular-verses', function () {
+//     return app(\App\Services\VerseService::class)->getPopularVerses();
+// })->name('popular-verses');
 
-Route::get('popular-categories', function () {
-    return app(\App\Services\CategoryService::class)->getPopularCategories();
-})->name('popular-categories');
+// Route::get('popular-categories', function () {
+//     return app(\App\Services\CategoryService::class)->getPopularCategories();
+// })->name('popular-categories');
 
-Route::get('categories/{category}/top-verses', function (\App\Models\Category $category) {
-    return app(\App\Services\VerseClassificationService::class)->getTopVersesForCategory($category);
-})->name('categories.top-verses');
+// Route::get('categories/{category}/top-verses', function (\App\Models\Category $category) {
+//     return app(\App\Services\VerseClassificationService::class)->getTopVersesForCategory($category);
+// })->name('categories.top-verses');
 
 // Random verse endpoint
 Route::get('verses/random', function (Illuminate\Http\Request $request) {
