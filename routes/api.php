@@ -77,13 +77,15 @@ Route::middleware('auth:api')->group(function () {
     Route::post('check-classification', [VerseClassificationController::class, 'checkClassification'])->name('classifications.check');
 });
 
-// Public verse classification (for mobile app without auth - legacy)
-Route::post('classify', [VerseClassificationController::class, 'classifyPublic'])->name('classifications.public');
-Route::get('my-classifications', [VerseClassificationController::class, 'getByDevice'])->name('classifications.by-device');
+// Public verse classification (legacy — kept for backwards compatibility, redirects to auth)
+// Route::post('classify', ...); // REMOVED — use classify-auth instead
+// Route::get('my-classifications', ...); // REMOVED — use my-classifications-auth instead
 
 // Authenticated classification (requires Google login)
 Route::middleware('auth:api')->group(function () {
+    Route::post('classify', [VerseClassificationController::class, 'classifyAuth'])->name('classifications.public'); // legacy alias
     Route::post('classify-auth', [VerseClassificationController::class, 'classifyAuth'])->name('classifications.auth');
+    Route::get('my-classifications', [VerseClassificationController::class, 'getByUser'])->name('classifications.by-device'); // legacy alias
     Route::get('my-classifications-auth', [VerseClassificationController::class, 'getByUser'])->name('classifications.by-user');
     Route::get('my-classification', [VerseClassificationController::class, 'getByReference'])->name('classifications.by-reference');
 });

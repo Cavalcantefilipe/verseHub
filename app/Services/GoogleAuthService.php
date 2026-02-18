@@ -54,13 +54,13 @@ class GoogleAuthService
     public function getUserFromCode(string $code): array
     {
         $token = $this->client->fetchAccessTokenWithAuthCode($code);
-        
+
         if (isset($token['error'])) {
             throw new Exception('Failed to fetch access token: ' . $token['error']);
         }
 
         $this->client->setAccessToken($token);
-        
+
         $oauth = new Oauth2($this->client);
         $userInfo = $oauth->userinfo->get();
 
@@ -108,7 +108,7 @@ class GoogleAuthService
             ]);
             throw new Exception(
                 'Failed to exchange authorization code: ' .
-                ($error['error_description'] ?? $error['error'] ?? 'Unknown error')
+                    ($error['error_description'] ?? $error['error'] ?? 'Unknown error')
             );
         }
 
@@ -186,7 +186,7 @@ class GoogleAuthService
     public function verifyIdToken(string $idToken): array
     {
         $payload = $this->client->verifyIdToken($idToken);
-        
+
         if (!$payload) {
             throw new Exception('Invalid ID token');
         }

@@ -180,7 +180,7 @@ class AuthController extends Controller
             // Redirect to mobile app via deep link with token only
             // The app will fetch user data using the token (simpler, more reliable)
             $deepLink = "bibleversemobile://auth?token={$token}";
-            
+
             Log::info('[GoogleAuth] Redirecting to app', ['email' => $user->email]);
 
             return redirect()->away($deepLink);
