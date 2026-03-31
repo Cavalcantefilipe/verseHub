@@ -38,9 +38,10 @@ COPY . .
 # Run post-install scripts
 RUN composer dump-autoload --optimize
 
-# Create storage directories and make start script executable
+# Create storage directories, fix permissions for php-fpm (www-data)
 RUN mkdir -p storage/framework/{sessions,views,cache/data} \
     && mkdir -p storage/logs \
+    && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache \
     && chmod +x start.sh
 
