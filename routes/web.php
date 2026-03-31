@@ -17,3 +17,7 @@ Route::get('/terms', function () {
 Route::get('/delete-account', function () {
     return view('delete-account');
 });
+
+Route::get('/admin/settings', function () {
+    return view('admin.settings');
+});

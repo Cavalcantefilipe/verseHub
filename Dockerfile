@@ -1,6 +1,6 @@
-FROM php:8.4-cli
+FROM php:8.4-fpm
 
-# Install system dependencies
+# Install system dependencies + nginx
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -10,8 +10,18 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     default-mysql-client \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath xml ctype \
+    nginx \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath xml ctype opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Configure OPcache for production
+RUN echo "opcache.enable=1\n\
+opcache.memory_consumption=128\n\
+opcache.interned_strings_buffer=8\n\
+opcache.max_accelerated_files=10000\n\
+opcache.validate_timestamps=0\n\
+opcache.save_comments=1\n\
+opcache.fast_shutdown=1" > /usr/local/etc/php/conf.d/opcache.ini
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

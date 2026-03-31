@@ -15,5 +15,18 @@ echo "Seeding database..."
 php artisan db:seed --force 2>&1 || echo "WARNING: Seed failed, continuing anyway..."
 
 echo ""
-echo "Starting PHP server on port ${PORT:-8080}..."
-exec php -S 0.0.0.0:${PORT:-8080} server.php
+echo "Caching config and routes..."
+php artisan config:cache 2>&1
+php artisan route:cache 2>&1
+
+echo ""
+echo "Configuring nginx on port ${PORT:-8080}..."
+sed -i "s/__PORT__/${PORT:-8080}/g" /app/nginx.conf
+cp /app/nginx.conf /etc/nginx/nginx.conf
+
+echo ""
+echo "Starting php-fpm..."
+php-fpm -D
+
+echo "Starting nginx..."
+exec nginx -g "daemon off;"

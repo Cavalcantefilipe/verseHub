@@ -9,6 +9,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\VerseClassificationController;
 use App\Http\Controllers\BibleController;
+use App\Http\Controllers\SiteSettingController;
 
 // ============================================
 // Authentication Routes
@@ -142,6 +143,17 @@ Route::get('bible-api/test', function () {
     $bibleService = app(\App\Services\BibleApiService::class);
     return response()->json($bibleService->testConnection());
 })->name('bible-api.test');
+
+// ============================================
+// Site Settings (backoffice - authenticated)
+// ============================================
+Route::middleware('auth:api')->prefix('settings')->group(function () {
+    Route::get('/', [SiteSettingController::class, 'index']);
+    Route::put('/', [SiteSettingController::class, 'update']);
+});
+
+// Public: scripts para o frontend executar
+Route::get('site-scripts', [SiteSettingController::class, 'scripts']);
 
 // ============================================
 // NEW: Bible Reading API - Fast & Scalable

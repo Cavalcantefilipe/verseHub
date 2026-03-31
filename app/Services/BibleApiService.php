@@ -64,7 +64,7 @@ class BibleApiService
     {
         $cacheKey = "bible_chapter_{$version}_{$bookAbbrev}_{$chapter}";
 
-        return Cache::remember($cacheKey, now()->addHours(24), function () use ($version, $bookAbbrev, $chapter) {
+        return Cache::remember($cacheKey, now()->addDays(30), function () use ($version, $bookAbbrev, $chapter) {
             $token = $this->getToken();
 
             if (!$token) {
