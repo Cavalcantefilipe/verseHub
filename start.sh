@@ -25,6 +25,10 @@ sed -i "s/__PORT__/${PORT:-8080}/g" /app/nginx.conf
 cp /app/nginx.conf /etc/nginx/nginx.conf
 
 echo ""
+echo "Starting Laravel scheduler (cron)..."
+(while true; do php /app/artisan schedule:run --no-interaction >> /app/storage/logs/scheduler.log 2>&1; sleep 60; done) &
+
+echo ""
 echo "Starting php-fpm..."
 php-fpm -D
 
