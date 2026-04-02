@@ -10,6 +10,18 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\VerseClassificationController;
 use App\Http\Controllers\BibleController;
 use App\Http\Controllers\SiteSettingController;
+use Illuminate\Support\Facades\Artisan;
+
+// ============================================
+// Temporary: trigger cache warm via HTTP
+// ============================================
+Route::get('warm-cache-trigger-9x7k', function () {
+    Artisan::call('bible:warm-cache');
+    return response()->json([
+        'status' => 'done',
+        'output' => Artisan::output(),
+    ]);
+})->name('warm-cache-trigger');
 
 // ============================================
 // Authentication Routes
