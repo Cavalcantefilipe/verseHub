@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 class WarmBibleCacheCommand extends Command
 {
-    protected $signature = 'bible:warm-cache {--version=* : Versões para cachear (padrão: nvi, acf, ra)}';
+    protected $signature = 'bible:warm-cache {--bible-version=* : Versões para cachear (padrão: nvi, acf, ra)}';
     protected $description = 'Busca todos os capítulos da Bíblia na API externa e popula o cache';
 
     // Livros com quantidade de capítulos
@@ -30,7 +30,7 @@ class WarmBibleCacheCommand extends Command
 
     public function handle(BibleApiService $bibleApi): int
     {
-        $versions = $this->option('version');
+        $versions = $this->option('bible-version');
         if (empty($versions)) {
             $versions = ['nvi', 'acf', 'ra'];
         }
