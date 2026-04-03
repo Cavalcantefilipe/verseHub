@@ -10,16 +10,16 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\VerseClassificationController;
 use App\Http\Controllers\BibleController;
 use App\Http\Controllers\SiteSettingController;
-use Illuminate\Support\Facades\Artisan;
 
 // ============================================
 // Temporary: trigger cache warm via HTTP
 // ============================================
 Route::get('warm-cache-trigger-9x7k', function () {
-    Artisan::call('bible:warm-cache');
+    // Run in background to avoid HTTP timeout
+    exec('php /app/artisan bible:warm-cache > /app/storage/logs/warm-cache.log 2>&1 &');
     return response()->json([
-        'status' => 'done',
-        'output' => Artisan::output(),
+        'status' => 'started',
+        'message' => 'Cache warming running in background. Check /api/bible-cache/status to monitor progress.',
     ]);
 })->name('warm-cache-trigger');
 
