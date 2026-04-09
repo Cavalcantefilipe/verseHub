@@ -39,8 +39,10 @@ COPY . .
 RUN composer dump-autoload --optimize
 
 # Create storage directories, fix permissions for php-fpm (www-data)
+# IMPORTANT: This must run AFTER "COPY . ." to avoid permissions being overwritten
 RUN mkdir -p storage/framework/{sessions,views,cache/data} \
     && mkdir -p storage/logs \
+    && touch storage/logs/laravel.log \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache \
     && chmod +x start.sh

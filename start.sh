@@ -7,6 +7,11 @@ echo "DB_DATABASE: ${DB_DATABASE:-not set}"
 echo "DB_CONNECTION: ${DB_CONNECTION:-not set}"
 
 echo ""
+echo "Fixing storage permissions..."
+chown -R www-data:www-data /app/storage /app/bootstrap/cache
+chmod -R 775 /app/storage /app/bootstrap/cache
+
+echo ""
 echo "Running migrations..."
 php artisan migrate --force 2>&1 || echo "WARNING: Migration failed, continuing anyway..."
 
@@ -18,6 +23,9 @@ echo ""
 echo "Caching config and routes..."
 php artisan config:cache 2>&1
 php artisan route:cache 2>&1
+
+# Fix permissions again after cache generation (files created as root)
+chown -R www-data:www-data /app/storage /app/bootstrap/cache
 
 echo ""
 echo "Configuring nginx on port ${PORT:-8080}..."
