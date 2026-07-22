@@ -5,26 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Category extends Model
+class CategoryGroup extends Model
 {
     use HasFactory;
+
+    protected $table = 'category_groups';
 
     protected $fillable = [
         'name',
         'slug',
-        'description',
         'icon',
         'color',
-        'category_group_id',
+        'display_order',
         'created_by_user_id',
         'status',
         'approved_by_user_id',
         'approved_at',
         'rejected_reason',
-        'display_order',
     ];
 
     protected function casts(): array
@@ -35,9 +34,9 @@ class Category extends Model
         ];
     }
 
-    public function group(): BelongsTo
+    public function categories(): HasMany
     {
-        return $this->belongsTo(CategoryGroup::class, 'category_group_id');
+        return $this->hasMany(Category::class);
     }
 
     public function creator(): BelongsTo
@@ -48,18 +47,6 @@ class Category extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by_user_id');
-    }
-
-    public function userVerseCategories(): HasMany
-    {
-        return $this->hasMany(UserVerseCategory::class);
-    }
-
-    public function bibleVerses(): BelongsToMany
-    {
-        return $this->belongsToMany(BibleVerse::class, 'user_verse_categories', 'category_id', 'bible_verse_id')
-            ->withPivot(['user_id'])
-            ->withTimestamps();
     }
 
     public function isOfficial(): bool

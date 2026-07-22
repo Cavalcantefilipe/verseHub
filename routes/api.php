@@ -1,15 +1,19 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\AdminCategoryController;
+use App\Http\Controllers\Admin\AdminCategoryGroupController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BibleController;
+use App\Http\Controllers\CategoryController;
 // Legacy controllers — tables renamed to *_off, kept for reference
 // use App\Http\Controllers\BibleVersionController;
 // use App\Http\Controllers\VerseController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\VerseClassificationController;
-use App\Http\Controllers\BibleController;
 use App\Http\Controllers\SiteSettingController;
+use App\Http\Controllers\VerseClassificationController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 // ============================================
 // Temporary: trigger cache warm via HTTP
@@ -17,6 +21,7 @@ use App\Http\Controllers\SiteSettingController;
 Route::get('warm-cache-trigger-9x7k', function () {
     // Run in background to avoid HTTP timeout
     exec('php /app/artisan bible:warm-cache > /app/storage/logs/warm-cache.log 2>&1 &');
+
     return response()->json([
         'status' => 'started',
         'message' => 'Cache warming running in background. Check /api/bible-cache/status to monitor progress.',
@@ -77,15 +82,19 @@ Route::get('/user', function (Request $request) {
 //     Route::delete('verses/{verse}', [VerseController::class, 'destroy']);
 // });
 
-// Categories (public read, auth required for write)
+// Categories — leitura pública (agrupada por grupo, status=approved)
 Route::get('categories', [CategoryController::class, 'index']);
-Route::get('categories/{category}', [CategoryController::class, 'show']);
+
+// Categorias custom criadas pelos usuários (auth)
 Route::middleware('auth:api')->group(function () {
-    Route::post('categories', [CategoryController::class, 'store']);
-    Route::put('categories/{category}', [CategoryController::class, 'update']);
-    Route::patch('categories/{category}', [CategoryController::class, 'update']);
-    Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
+    Route::get('categories/mine', [CategoryController::class, 'mine']);
+    Route::post('categories/custom', [CategoryController::class, 'storeCustom']);
+    Route::delete('categories/custom/{category}', [CategoryController::class, 'destroyCustom'])
+        ->whereNumber('category');
 });
+
+Route::get('categories/{category}', [CategoryController::class, 'show'])
+    ->whereNumber('category');
 
 // ============================================
 // Verse Classifications (legacy apiResource) — DISABLED (tables renamed to *_off)
@@ -138,21 +147,22 @@ Route::get('verses/random', function (Illuminate\Http\Request $request) {
     $bibleService = app(\App\Services\BibleApiService::class);
     $randomVerse = $bibleService->getRandomVerse($version);
 
-    if (!$randomVerse) {
+    if (! $randomVerse) {
         return response()->json([
-            'message' => 'Unable to fetch random verse'
+            'message' => 'Unable to fetch random verse',
         ], 500);
     }
 
     return response()->json([
         'data' => $randomVerse,
-        'message' => 'Random verse retrieved successfully'
+        'message' => 'Random verse retrieved successfully',
     ]);
 })->name('verses.random');
 
 // Test Bible API connection
 Route::get('bible-api/test', function () {
     $bibleService = app(\App\Services\BibleApiService::class);
+
     return response()->json($bibleService->testConnection());
 })->name('bible-api.test');
 
@@ -200,7 +210,7 @@ Route::get('bible-cache/status', function () {
         'versions' => $cached,
         'total_cached' => $totalCached,
         'total_possible' => $totalPossible,
-        'percentage' => round(($totalCached / $totalPossible) * 100, 1) . '%',
+        'percentage' => round(($totalCached / $totalPossible) * 100, 1).'%',
         'cache_driver' => config('cache.default'),
     ]);
 })->name('bible-cache.status');
@@ -215,6 +225,41 @@ Route::middleware('auth:api')->prefix('settings')->group(function () {
 
 // Public: scripts para o frontend executar
 Route::get('site-scripts', [SiteSettingController::class, 'scripts']);
+
+// ============================================
+// ADMIN API (consumida pelo site React admin)
+// ============================================
+Route::middleware(['auth:api', 'admin'])->prefix('admin')->group(function () {
+    // Dashboard + audit
+    Route::get('dashboard', [AdminDashboardController::class, 'index']);
+    Route::get('audit-log', [AdminDashboardController::class, 'auditLog']);
+
+    // Categorias
+    Route::get('categories', [AdminCategoryController::class, 'index']);
+    Route::get('categories/pending', [AdminCategoryController::class, 'pending']);
+    Route::post('categories', [AdminCategoryController::class, 'store']);
+    Route::put('categories/{category}', [AdminCategoryController::class, 'update']);
+    Route::patch('categories/{category}', [AdminCategoryController::class, 'update']);
+    Route::post('categories/{category}/approve', [AdminCategoryController::class, 'approve']);
+    Route::post('categories/{category}/reject', [AdminCategoryController::class, 'reject']);
+
+    // Grupos
+    Route::get('category-groups', [AdminCategoryGroupController::class, 'index']);
+    Route::get('category-groups/pending', [AdminCategoryGroupController::class, 'pending']);
+    Route::post('category-groups', [AdminCategoryGroupController::class, 'store']);
+    Route::put('category-groups/{categoryGroup}', [AdminCategoryGroupController::class, 'update']);
+    Route::patch('category-groups/{categoryGroup}', [AdminCategoryGroupController::class, 'update']);
+    Route::post('category-groups/{categoryGroup}/approve', [AdminCategoryGroupController::class, 'approve']);
+    Route::post('category-groups/{categoryGroup}/reject', [AdminCategoryGroupController::class, 'reject']);
+
+    // Usuários
+    Route::get('users', [AdminUserController::class, 'index']);
+    Route::get('users/{user}', [AdminUserController::class, 'show']);
+    Route::post('users/{user}/block-categories', [AdminUserController::class, 'blockCategories']);
+    Route::post('users/{user}/unblock-categories', [AdminUserController::class, 'unblockCategories']);
+    Route::post('users/{user}/promote', [AdminUserController::class, 'promote']);
+    Route::post('users/{user}/demote', [AdminUserController::class, 'demote']);
+});
 
 // ============================================
 // NEW: Bible Reading API - Fast & Scalable

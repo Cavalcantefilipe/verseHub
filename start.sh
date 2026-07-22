@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "=== VerseHub Startup ==="
 echo "PORT: ${PORT:-not set}"
 echo "DB_HOST: ${DB_HOST:-not set}"
@@ -13,11 +15,11 @@ chmod -R 775 /app/storage /app/bootstrap/cache
 
 echo ""
 echo "Running migrations..."
-php artisan migrate --force 2>&1 || echo "WARNING: Migration failed, continuing anyway..."
+php artisan migrate --force 2>&1
 
 echo ""
 echo "Seeding database..."
-php artisan db:seed --force 2>&1 || echo "WARNING: Seed failed, continuing anyway..."
+php artisan db:seed --force 2>&1
 
 echo ""
 echo "Caching config and routes..."

@@ -7,8 +7,8 @@ use App\Services\GoogleAuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
@@ -84,7 +84,7 @@ class AuthController extends Controller
 
         $credentials = $request->only('email', 'password');
 
-        if (!$token = auth('api')->attempt($credentials)) {
+        if (! $token = auth('api')->attempt($credentials)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',
@@ -124,10 +124,65 @@ class AuthController extends Controller
         // IPs privados (192.168.x.x) são rejeitados pelo Google OAuth.
         $callbackUrl = config('services.google.redirect');
 
-        Log::info('[GoogleAuth] Redirect URI for Google: ' . $callbackUrl);
+        // Suporta dois fluxos:
+        //  - mobile (default): callback redireciona pro deep link bibleversemobile://...
+        //  - web client (admin): se vier ?client_redirect=https://..., codificamos no
+        //    state e o callback redireciona o usuário pra essa URL com ?token=JWT.
+        $clientRedirect = $request->query('client_redirect');
+        $state = null;
 
-        $url = $this->googleAuthService->getAuthUrlWithRedirect($callbackUrl);
+        if ($clientRedirect && $this->isAllowedClientRedirect($clientRedirect)) {
+            $state = base64_encode(json_encode(['client_redirect' => $clientRedirect]));
+        }
+
+        Log::info('[GoogleAuth] Redirect URI for Google: '.$callbackUrl);
+
+        $url = $this->googleAuthService->getAuthUrlWithRedirect($callbackUrl, $state);
+
         return redirect()->away($url);
+    }
+
+    /**
+     * Whitelist de origens autorizadas pra receber o JWT por redirect. Pode ser
+     * configurada via env GOOGLE_CLIENT_REDIRECT_ALLOWED (lista separada por
+     * vírgula). Default é vazio (ninguém autorizado), por segurança — quem
+     * habilitar precisa listar explicitamente o site admin.
+     */
+    protected function isAllowedClientRedirect(string $url): bool
+    {
+        $allowed = (string) config('services.google.client_redirect_allowed', '');
+        if ($allowed === '') {
+            return false;
+        }
+
+        $candidate = parse_url($url);
+        if (! is_array($candidate) || ! isset($candidate['scheme'], $candidate['host'])) {
+            return false;
+        }
+
+        $candidateOrigin = strtolower($candidate['scheme']).'://'.strtolower($candidate['host']);
+        if (isset($candidate['port'])) {
+            $candidateOrigin .= ':'.$candidate['port'];
+        }
+
+        $list = array_filter(array_map('trim', explode(',', $allowed)));
+        foreach ($list as $allowedUrl) {
+            $allowedParts = parse_url($allowedUrl);
+            if (! is_array($allowedParts) || ! isset($allowedParts['scheme'], $allowedParts['host'])) {
+                continue;
+            }
+
+            $allowedOrigin = strtolower($allowedParts['scheme']).'://'.strtolower($allowedParts['host']);
+            if (isset($allowedParts['port'])) {
+                $allowedOrigin .= ':'.$allowedParts['port'];
+            }
+
+            if (hash_equals($allowedOrigin, $candidateOrigin)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -138,15 +193,37 @@ class AuthController extends Controller
      */
     public function handleGoogleCallback(Request $request)
     {
+        // Resolve onde mandar o usuário no fim. Se vier state com
+        // client_redirect (e estiver na whitelist), usa ele. Senão, deep link mobile.
+        $clientRedirect = null;
+        $stateRaw = $request->query('state');
+        if ($stateRaw) {
+            $decoded = json_decode((string) base64_decode($stateRaw, true), true);
+            $candidate = is_array($decoded) ? ($decoded['client_redirect'] ?? null) : null;
+            if (is_string($candidate) && $this->isAllowedClientRedirect($candidate)) {
+                $clientRedirect = $candidate;
+            }
+        }
+
+        $errorRedirect = function (string $error) use ($clientRedirect) {
+            if ($clientRedirect) {
+                $sep = str_contains($clientRedirect, '?') ? '&' : '?';
+
+                return redirect()->away($clientRedirect.$sep.'error='.urlencode($error));
+            }
+
+            return redirect()->away('bibleversemobile://auth?error='.urlencode($error));
+        };
+
         try {
-            if (!$request->has('code')) {
-                return redirect()->away('bibleversemobile://auth?error=no_code');
+            if (! $request->has('code')) {
+                return $errorRedirect('no_code');
             }
 
             // Deve usar a mesma redirect URI fixa enviada ao Google no redirectToGoogle
             $callbackUrl = config('services.google.redirect');
 
-            Log::info('[GoogleAuth] Callback redirect URI: ' . $callbackUrl);
+            Log::info('[GoogleAuth] Callback redirect URI: '.$callbackUrl);
 
             // Get user info from Google using the dynamic redirect URI
             $googleUser = $this->googleAuthService->getUserFromCodeWithRedirect(
@@ -157,7 +234,7 @@ class AuthController extends Controller
             // Find or create user
             $user = User::where('email', $googleUser['email'])->first();
 
-            if (!$user) {
+            if (! $user) {
                 $user = User::create([
                     'name' => $googleUser['name'],
                     'email' => $googleUser['email'],
@@ -177,19 +254,27 @@ class AuthController extends Controller
             // Generate JWT token
             $token = JWTAuth::fromUser($user);
 
-            // Redirect to mobile app via deep link with token only
-            // The app will fetch user data using the token (simpler, more reliable)
+            if ($clientRedirect) {
+                $sep = str_contains($clientRedirect, '?') ? '&' : '?';
+                Log::info('[GoogleAuth] Redirecting to web client', [
+                    'email' => $user->email,
+                    'client' => $clientRedirect,
+                ]);
+
+                return redirect()->away($clientRedirect.$sep.'token='.$token);
+            }
+
             $deepLink = "bibleversemobile://auth?token={$token}";
 
             Log::info('[GoogleAuth] Redirecting to app', ['email' => $user->email]);
 
             return redirect()->away($deepLink);
         } catch (\Exception $e) {
-            Log::error('Google callback failed: ' . $e->getMessage(), [
+            Log::error('Google callback failed: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
-            $error = urlencode($e->getMessage());
-            return redirect()->away("bibleversemobile://auth?error={$error}");
+
+            return $errorRedirect($e->getMessage());
         }
     }
 
@@ -218,7 +303,7 @@ class AuthController extends Controller
             // Find or create user
             $user = User::where('email', $googleUser['email'])->first();
 
-            if (!$user) {
+            if (! $user) {
                 // Create new user
                 $user = User::create([
                     'name' => $googleUser['name'],
@@ -230,7 +315,7 @@ class AuthController extends Controller
                 ]);
             } else {
                 // Update existing user with Google info if not already set
-                if (!$user->google_id) {
+                if (! $user->google_id) {
                     $user->update([
                         'google_id' => $googleUser['google_id'],
                         'avatar' => $googleUser['avatar'],
@@ -296,7 +381,7 @@ class AuthController extends Controller
             // Find or create user
             $user = User::where('email', $request->email)->first();
 
-            if (!$user) {
+            if (! $user) {
                 $user = User::create([
                     'name' => $request->name,
                     'email' => $request->email,
@@ -335,7 +420,8 @@ class AuthController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Google mobile login failed: ' . $e->getMessage());
+            Log::error('Google mobile login failed: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to authenticate with Google',
@@ -376,7 +462,7 @@ class AuthController extends Controller
             // Find or create user
             $user = User::where('email', $googleUser['email'])->first();
 
-            if (!$user) {
+            if (! $user) {
                 $user = User::create([
                     'name' => $googleUser['name'],
                     'email' => $googleUser['email'],
@@ -386,7 +472,7 @@ class AuthController extends Controller
                     'email_verified_at' => $googleUser['email_verified'] ? now() : null,
                 ]);
             } else {
-                if (!$user->google_id) {
+                if (! $user->google_id) {
                     $user->update([
                         'google_id' => $googleUser['google_id'],
                         'avatar' => $googleUser['avatar'],
@@ -418,9 +504,10 @@ class AuthController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Google code auth failed: ' . $e->getMessage(), [
+            Log::error('Google code auth failed: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to authenticate with Google',
@@ -446,6 +533,9 @@ class AuthController extends Controller
                     'email' => $user->email,
                     'avatar' => $user->avatar,
                     'google_id' => $user->google_id,
+                    'is_admin' => $user->is_admin,
+                    'can_create_categories' => $user->can_create_categories,
+                    'custom_categories_count' => $user->custom_categories_count,
                     'email_verified_at' => $user->email_verified_at,
                     'created_at' => $user->created_at,
                 ],

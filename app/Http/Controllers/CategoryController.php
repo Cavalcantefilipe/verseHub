@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Services\CategoryService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CategoryController extends Controller
 {
@@ -14,82 +17,99 @@ class CategoryController extends Controller
     ) {}
 
     /**
-     * Display a listing of categories.
+     * GET /api/categories
+     * Retorna categorias agrupadas por grupo (só status=approved).
      */
     public function index(): JsonResponse
     {
-        $categories = $this->categoryService->getAllCategories();
+        return response()->json([
+            'data' => $this->categoryService->getApprovedGrouped(),
+            'message' => 'Categories retrieved successfully',
+        ]);
+    }
+
+    public function show(Category $category): JsonResponse
+    {
+        abort_unless($category->status === 'approved', 404);
+
+        $category->loadCount(['userVerseCategories as classifications_count']);
+        $category->load('group');
+        $category->makeHidden([
+            'created_by_user_id',
+            'approved_by_user_id',
+            'rejected_reason',
+        ]);
+        $category->group?->makeHidden([
+            'created_by_user_id',
+            'approved_by_user_id',
+            'rejected_reason',
+        ]);
 
         return response()->json([
-            'data' => $categories,
-            'message' => 'Categories retrieved successfully'
+            'data' => $category,
+            'message' => 'Category retrieved successfully',
         ]);
     }
 
     /**
-     * Store a newly created category.
+     * GET /api/categories/mine — categorias custom do usuário (auth).
      */
-    public function store(Request $request): JsonResponse
+    public function mine(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->categoryService->getMineForUser(Auth::user()),
+            'message' => 'Custom categories retrieved successfully',
+        ]);
+    }
+
+    /**
+     * POST /api/categories/custom — cria custom (auth).
+     */
+    public function storeCustom(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'nullable|string|unique:categories,slug|max:255',
-            'description' => 'nullable|string',
+            'description' => 'nullable|string|max:1000',
             'icon' => 'nullable|string|max:100',
             'color' => 'nullable|string|max:7',
+            'category_group_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('category_groups', 'id')->where('status', 'approved'),
+            ],
+            'new_group_name' => 'nullable|string|max:120',
         ]);
 
-        $category = $this->categoryService->create($validated);
+        if (empty($validated['category_group_id']) && empty($validated['new_group_name'])) {
+            throw ValidationException::withMessages([
+                'group' => 'Escolha um grupo existente ou crie um grupo novo.',
+            ]);
+        }
+
+        if (! empty($validated['category_group_id']) && ! empty($validated['new_group_name'])) {
+            throw ValidationException::withMessages([
+                'group' => 'Escolha apenas uma opção: grupo existente ou novo.',
+            ]);
+        }
+
+        $category = $this->categoryService->createCustom(Auth::user(), $validated);
+        $category->load('group');
 
         return response()->json([
             'data' => $category,
-            'message' => 'Category created successfully'
+            'message' => 'Categoria criada e enviada para aprovação.',
         ], 201);
     }
 
     /**
-     * Display the specified category.
+     * DELETE /api/categories/custom/{id} — só pendentes do próprio usuário.
      */
-    public function show(Category $category): JsonResponse
+    public function destroyCustom(Category $category): JsonResponse
     {
-        $category->loadCount(['userVerseCategories as classifications_count']);
+        $this->categoryService->deleteCustom(Auth::user(), $category);
 
         return response()->json([
-            'data' => $category,
-            'message' => 'Category retrieved successfully'
-        ]);
-    }
-
-    /**
-     * Update the specified category.
-     */
-    public function update(Request $request, Category $category): JsonResponse
-    {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'slug' => 'nullable|string|unique:categories,slug,' . $category->id . '|max:255',
-            'description' => 'nullable|string',
-            'icon' => 'nullable|string|max:100',
-            'color' => 'nullable|string|max:7',
-        ]);
-
-        $category = $this->categoryService->update($category, $validated);
-
-        return response()->json([
-            'data' => $category,
-            'message' => 'Category updated successfully'
-        ]);
-    }
-
-    /**
-     * Remove the specified category.
-     */
-    public function destroy(Category $category): JsonResponse
-    {
-        $this->categoryService->delete($category);
-
-        return response()->json([
-            'message' => 'Category deleted successfully'
+            'message' => 'Categoria removida.',
         ]);
     }
 }

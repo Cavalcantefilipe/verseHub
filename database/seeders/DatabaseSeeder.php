@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,17 +14,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Seed Bible versions first
+        // As versões e os versículos legados foram desativados e suas tabelas
+        // recebem o sufixo `_off`. A leitura bíblica atual vem da API/cache.
         $this->call([
-            BibleVersionSeeder::class,
             CategorySeeder::class,
-        ]);
-
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
         ]);
     }
 }

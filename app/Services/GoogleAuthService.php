@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
+use Exception;
 use Google\Client as GoogleClient;
 use Google\Service\Oauth2;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class GoogleAuthService
 {
@@ -14,7 +14,7 @@ class GoogleAuthService
 
     public function __construct()
     {
-        $this->client = new GoogleClient();
+        $this->client = new GoogleClient;
         $this->client->setClientId(config('services.google.client_id'));
         $this->client->setClientSecret(config('services.google.client_secret'));
         $this->client->setRedirectUri(config('services.google.redirect'));
@@ -34,9 +34,9 @@ class GoogleAuthService
      * Get the Google OAuth authorization URL with a custom redirect URI.
      * Used for dynamic redirect URIs (e.g., when accessed via LAN IP).
      */
-    public function getAuthUrlWithRedirect(string $redirectUri): string
+    public function getAuthUrlWithRedirect(string $redirectUri, ?string $state = null): string
     {
-        $client = new GoogleClient();
+        $client = new GoogleClient;
         $client->setClientId(config('services.google.client_id'));
         $client->setClientSecret(config('services.google.client_secret'));
         $client->setRedirectUri($redirectUri);
@@ -44,6 +44,9 @@ class GoogleAuthService
         $client->addScope('profile');
         $client->setAccessType('offline');
         $client->setPrompt('select_account');
+        if ($state !== null && $state !== '') {
+            $client->setState($state);
+        }
 
         return $client->createAuthUrl();
     }
@@ -56,7 +59,7 @@ class GoogleAuthService
         $token = $this->client->fetchAccessTokenWithAuthCode($code);
 
         if (isset($token['error'])) {
-            throw new Exception('Failed to fetch access token: ' . $token['error']);
+            throw new Exception('Failed to fetch access token: '.$token['error']);
         }
 
         $this->client->setAccessToken($token);
@@ -94,20 +97,20 @@ class GoogleAuthService
 
         Log::info('[GoogleAuth] Exchanging code for tokens', [
             'redirect_uri' => $redirectUri,
-            'has_code_verifier' => !empty($codeVerifier),
+            'has_code_verifier' => ! empty($codeVerifier),
         ]);
 
         // Exchange authorization code for tokens
         $response = Http::asForm()->post('https://oauth2.googleapis.com/token', $params);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $error = $response->json();
             Log::error('[GoogleAuth] Token exchange failed', [
                 'status' => $response->status(),
                 'error' => $error,
             ]);
             throw new Exception(
-                'Failed to exchange authorization code: ' .
+                'Failed to exchange authorization code: '.
                     ($error['error_description'] ?? $error['error'] ?? 'Unknown error')
             );
         }
@@ -136,14 +139,14 @@ class GoogleAuthService
         // Use Google Client to verify the id_token
         $payload = $this->client->verifyIdToken($idToken);
 
-        if (!$payload) {
+        if (! $payload) {
             // Fallback: decode JWT without verification (the token was just issued by Google)
             $parts = explode('.', $idToken);
             if (count($parts) !== 3) {
                 throw new Exception('Invalid ID token format');
             }
             $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-            if (!$payload) {
+            if (! $payload) {
                 throw new Exception('Failed to decode ID token');
             }
         }
@@ -165,7 +168,7 @@ class GoogleAuthService
         $response = Http::withToken($accessToken)
             ->get('https://www.googleapis.com/oauth2/v2/userinfo');
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new Exception('Failed to fetch user info from Google');
         }
 
@@ -187,7 +190,7 @@ class GoogleAuthService
     {
         $payload = $this->client->verifyIdToken($idToken);
 
-        if (!$payload) {
+        if (! $payload) {
             throw new Exception('Invalid ID token');
         }
 

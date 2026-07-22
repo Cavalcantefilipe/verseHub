@@ -3,19 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\BibleVerse;
+use App\Models\Category;
 use App\Models\UserVerseCategory;
 use App\Models\Verse;
-use App\Models\Category;
+use App\Services\ActivityEventService;
 use App\Services\VerseClassificationService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class VerseClassificationController extends Controller
 {
     public function __construct(
-        protected VerseClassificationService $classificationService
+        protected VerseClassificationService $classificationService,
+        protected ActivityEventService $activityEventService
     ) {}
 
     /**
@@ -30,7 +32,7 @@ class VerseClassificationController extends Controller
 
         return response()->json([
             'data' => $classifications,
-            'message' => 'User classifications retrieved successfully'
+            'message' => 'User classifications retrieved successfully',
         ]);
     }
 
@@ -57,7 +59,7 @@ class VerseClassificationController extends Controller
 
         return response()->json([
             'data' => $classification->load(['verse.version', 'category']),
-            'message' => 'Verse classified successfully'
+            'message' => 'Verse classified successfully',
         ], 201);
     }
 
@@ -70,7 +72,7 @@ class VerseClassificationController extends Controller
 
         return response()->json([
             'data' => $classifications,
-            'message' => 'Verse classifications retrieved successfully'
+            'message' => 'Verse classifications retrieved successfully',
         ]);
     }
 
@@ -93,14 +95,14 @@ class VerseClassificationController extends Controller
             $category
         );
 
-        if (!$removed) {
+        if (! $removed) {
             return response()->json([
-                'message' => 'Classification not found'
+                'message' => 'Classification not found',
             ], 404);
         }
 
         return response()->json([
-            'message' => 'Classification removed successfully'
+            'message' => 'Classification removed successfully',
         ]);
     }
 
@@ -125,9 +127,9 @@ class VerseClassificationController extends Controller
 
         return response()->json([
             'data' => [
-                'has_classified' => $hasClassified
+                'has_classified' => $hasClassified,
             ],
-            'message' => 'Classification status retrieved successfully'
+            'message' => 'Classification status retrieved successfully',
         ]);
     }
 
@@ -150,6 +152,26 @@ class VerseClassificationController extends Controller
 
         $user = Auth::user();
 
+        // Em v2, validamos que cada category_id é visível pra esse usuário:
+        // - aprovada (qualquer um pode usar), ou
+        // - pendente E criada por ele mesmo (privada por enquanto).
+        $validCategoryIds = Category::whereIn('id', $validated['category_ids'])
+            ->where(function ($q) use ($user) {
+                $q->where('status', 'approved')
+                    ->orWhere(function ($q2) use ($user) {
+                        $q2->where('status', 'pending')
+                            ->where('created_by_user_id', $user->id);
+                    });
+            })
+            ->pluck('id')
+            ->all();
+
+        if (count($validCategoryIds) !== count($validated['category_ids'])) {
+            return response()->json([
+                'message' => 'Uma ou mais categorias não estão disponíveis.',
+            ], 422);
+        }
+
         // 1. Find or create the bible verse
         $bibleVerse = BibleVerse::findOrCreateByReference(
             $validated['reference'],
@@ -162,14 +184,14 @@ class VerseClassificationController extends Controller
             ->where('bible_verse_id', $bibleVerse->id)
             ->exists();
 
-        DB::transaction(function () use ($user, $bibleVerse, $validated) {
+        DB::transaction(function () use ($user, $bibleVerse, $validCategoryIds) {
             // Delete existing categories for this user+verse
             UserVerseCategory::where('user_id', $user->id)
                 ->where('bible_verse_id', $bibleVerse->id)
                 ->delete();
 
             // Insert new categories
-            foreach ($validated['category_ids'] as $categoryId) {
+            foreach ($validCategoryIds as $categoryId) {
                 UserVerseCategory::create([
                     'user_id' => $user->id,
                     'bible_verse_id' => $bibleVerse->id,
@@ -177,6 +199,18 @@ class VerseClassificationController extends Controller
                 ]);
             }
         });
+
+        $this->activityEventService->track(
+            $user,
+            ActivityEventService::VERSE_CLASSIFIED,
+            [
+                'bible_verse_id' => $bibleVerse->id,
+                'reference' => $bibleVerse->reference,
+                'category_ids' => $validCategoryIds,
+            ]
+        );
+
+        $validated['category_ids'] = $validCategoryIds;
 
         // Get category details for response
         $categories = Category::whereIn('id', $validated['category_ids'])->get();
@@ -193,7 +227,7 @@ class VerseClassificationController extends Controller
             ],
             'message' => $existedBefore
                 ? 'Classification updated successfully'
-                : 'Classification saved successfully'
+                : 'Classification saved successfully',
         ], $existedBefore ? 200 : 201);
     }
 
@@ -214,10 +248,10 @@ class VerseClassificationController extends Controller
         // Find the bible verse matching this reference
         $bibleVerse = BibleVerse::where('reference', $validated['reference'])->first();
 
-        if (!$bibleVerse) {
+        if (! $bibleVerse) {
             return response()->json([
                 'data' => null,
-                'message' => 'No classification found for this reference'
+                'message' => 'No classification found for this reference',
             ]);
         }
 
@@ -230,11 +264,28 @@ class VerseClassificationController extends Controller
         if (empty($userCategoryIds)) {
             return response()->json([
                 'data' => null,
-                'message' => 'No classification found for this reference'
+                'message' => 'No classification found for this reference',
             ]);
         }
 
-        $categories = Category::whereIn('id', $userCategoryIds)->get();
+        $categories = Category::whereIn('id', $userCategoryIds)
+            ->where(function ($query) use ($user) {
+                $query->where('status', 'approved')
+                    ->orWhere(function ($pending) use ($user) {
+                        $pending->where('status', 'pending')
+                            ->where('created_by_user_id', $user->id);
+                    });
+            })
+            ->get();
+
+        $visibleCategoryIds = $categories->pluck('id')->all();
+
+        if (empty($visibleCategoryIds)) {
+            return response()->json([
+                'data' => null,
+                'message' => 'No available classification found for this reference',
+            ]);
+        }
 
         return response()->json([
             'data' => [
@@ -243,10 +294,10 @@ class VerseClassificationController extends Controller
                 'text' => $bibleVerse->text,
                 'version' => $bibleVerse->version,
                 'categories' => $categories,
-                'category_ids' => $userCategoryIds,
+                'category_ids' => $visibleCategoryIds,
                 'created_at' => $bibleVerse->created_at,
             ],
-            'message' => 'Classification found'
+            'message' => 'Classification found',
         ]);
     }
 
@@ -277,14 +328,29 @@ class VerseClassificationController extends Controller
             ->groupBy('bible_verse_id');
 
         $allCategoryIds = $allUserCategories->flatten()->pluck('category_id')->unique();
-        $categoriesMap = Category::whereIn('id', $allCategoryIds)->get()->keyBy('id');
+        $categoriesMap = Category::whereIn('id', $allCategoryIds)
+            ->where(function ($query) use ($user) {
+                $query->where('status', 'approved')
+                    ->orWhere(function ($pending) use ($user) {
+                        $pending->where('status', 'pending')
+                            ->where('created_by_user_id', $user->id);
+                    });
+            })
+            ->get()
+            ->keyBy('id');
 
         $classifications = $verseIds->map(function ($verseId) use ($bibleVerses, $allUserCategories, $categoriesMap) {
             $bibleVerse = $bibleVerses->get($verseId);
-            if (!$bibleVerse) return null;
+            if (! $bibleVerse) {
+                return null;
+            }
 
             $categoryIds = $allUserCategories->get($verseId, collect())->pluck('category_id');
-            $categories = $categoryIds->map(fn($id) => $categoriesMap->get($id))->filter()->values();
+            $categories = $categoryIds->map(fn ($id) => $categoriesMap->get($id))->filter()->values();
+
+            if ($categories->isEmpty()) {
+                return null;
+            }
 
             return [
                 'id' => $bibleVerse->id,
@@ -298,7 +364,7 @@ class VerseClassificationController extends Controller
 
         return response()->json([
             'data' => $classifications,
-            'message' => 'User classifications retrieved successfully'
+            'message' => 'User classifications retrieved successfully',
         ]);
     }
 
@@ -319,38 +385,44 @@ class VerseClassificationController extends Controller
         // Find bible verse
         $bibleVerse = BibleVerse::where('reference', $reference)->first();
 
-        if (!$bibleVerse) {
+        if (! $bibleVerse) {
             return response()->json([
                 'data' => [
                     'reference' => $reference,
                     'total_classifications' => 0,
                     'total_people' => 0,
                     'stats' => [],
+                    'headline' => null,
                 ],
-                'message' => 'Verse stats retrieved successfully'
+                'message' => 'Verse stats retrieved successfully',
             ]);
         }
 
-        // Count unique users who classified this verse
+        // Só consideramos categorias aprovadas no agregado público.
+        $approvedCategoryIds = Category::where('status', 'approved')->pluck('id');
+
         $verseClassifications = UserVerseCategory::where('bible_verse_id', $bibleVerse->id)
+            ->whereIn('category_id', $approvedCategoryIds)
             ->whereNotNull('user_id')
             ->get();
+
         $totalPeople = $verseClassifications->pluck('user_id')->unique()->count();
 
-        // Get category counts using proper SQL aggregation
         $categoryCounts = UserVerseCategory::where('bible_verse_id', $bibleVerse->id)
+            ->whereIn('category_id', $approvedCategoryIds)
             ->select('category_id', DB::raw('COUNT(*) as count'))
             ->groupBy('category_id')
             ->orderByDesc('count')
             ->get();
 
-        // Get category details
         $categoryIds = $categoryCounts->pluck('category_id')->toArray();
         $categories = Category::whereIn('id', $categoryIds)->get()->keyBy('id');
 
         $stats = $categoryCounts->map(function ($row) use ($categories, $totalPeople) {
             $category = $categories->get($row->category_id);
-            if (!$category) return null;
+            if (! $category) {
+                return null;
+            }
 
             return [
                 'category_id' => $category->id,
@@ -364,14 +436,27 @@ class VerseClassificationController extends Controller
             ];
         })->filter()->values()->toArray();
 
+        // Frase pra UI: "X% das pessoas escolheram ler esse versículo quando…"
+        // Os nomes oficiais já começam com "...", então a frase encaixa.
+        $headline = null;
+        if (! empty($stats) && $totalPeople > 0) {
+            $top = $stats[0];
+            $headline = sprintf(
+                '%s%% das pessoas escolheram ler esse versículo quando %s',
+                rtrim(rtrim((string) $top['percentage'], '0'), '.'),
+                ltrim($top['category_name'], '…. ')
+            );
+        }
+
         return response()->json([
             'data' => [
                 'reference' => $reference,
                 'total_classifications' => $categoryCounts->sum('count'),
                 'total_people' => $totalPeople,
                 'stats' => $stats,
+                'headline' => $headline,
             ],
-            'message' => 'Verse stats retrieved successfully'
+            'message' => 'Verse stats retrieved successfully',
         ]);
     }
 
@@ -385,8 +470,13 @@ class VerseClassificationController extends Controller
     {
         $categoryFilter = $request->get('category_id');
 
-        // Get distinct verse IDs, optionally filtered by category
-        $query = UserVerseCategory::query()->select('bible_verse_id')->distinct();
+        // Só categorias aprovadas entram no feed público.
+        $approvedCategoryIds = Category::where('status', 'approved')->pluck('id');
+
+        $query = UserVerseCategory::query()
+            ->select('bible_verse_id')
+            ->whereIn('category_id', $approvedCategoryIds)
+            ->distinct();
 
         if ($categoryFilter) {
             $query->where('category_id', (int) $categoryFilter);
@@ -405,8 +495,10 @@ class VerseClassificationController extends Controller
         // Load all bible verses
         $bibleVerses = BibleVerse::whereIn('id', $verseIds)->get()->keyBy('id');
 
-        // Get all classifications for these verses in one query
-        $allClassifications = UserVerseCategory::whereIn('bible_verse_id', $verseIds)->get();
+        // Get all classifications for these verses in one query (só aprovadas)
+        $allClassifications = UserVerseCategory::whereIn('bible_verse_id', $verseIds)
+            ->whereIn('category_id', $approvedCategoryIds)
+            ->get();
 
         // Preload all relevant categories
         $allCategoryIds = $allClassifications->pluck('category_id')->unique();
@@ -417,18 +509,20 @@ class VerseClassificationController extends Controller
 
         foreach ($grouped as $verseId => $verseClassifications) {
             $bibleVerse = $bibleVerses->get($verseId);
-            if (!$bibleVerse) continue;
+            if (! $bibleVerse) {
+                continue;
+            }
 
             // Count unique people
             $uniquePeople = $verseClassifications
-                ->map(fn($c) => $c->user_id ? 'u' . $c->user_id : 'd' . $c->device_id)
+                ->map(fn ($c) => $c->user_id ? 'u'.$c->user_id : 'd'.$c->device_id)
                 ->unique()
                 ->count();
 
             // Count categories
             $categoryCounts = $verseClassifications
                 ->groupBy('category_id')
-                ->map(fn($group) => $group->count())
+                ->map(fn ($group) => $group->count())
                 ->sortDesc();
 
             // Top 3 categories
@@ -460,7 +554,7 @@ class VerseClassificationController extends Controller
         }
 
         // Sort by total_people descending (most popular first)
-        usort($feed, fn($a, $b) => $b['total_people'] <=> $a['total_people']);
+        usort($feed, fn ($a, $b) => $b['total_people'] <=> $a['total_people']);
 
         return response()->json([
             'data' => $feed,

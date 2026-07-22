@@ -4,8 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
@@ -29,6 +29,9 @@ class User extends Authenticatable implements JWTSubject
         'google_id',
         'avatar',
         'email_verified_at',
+        'is_admin',
+        'can_create_categories',
+        'custom_categories_count',
     ];
 
     /**
@@ -51,7 +54,30 @@ class User extends Authenticatable implements JWTSubject
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
+            'can_create_categories' => 'boolean',
+            'custom_categories_count' => 'integer',
         ];
+    }
+
+    public function customCategories(): HasMany
+    {
+        return $this->hasMany(Category::class, 'created_by_user_id');
+    }
+
+    public function customCategoryGroups(): HasMany
+    {
+        return $this->hasMany(CategoryGroup::class, 'created_by_user_id');
+    }
+
+    public function activityEvents(): HasMany
+    {
+        return $this->hasMany(UserActivityEvent::class);
+    }
+
+    public function stats()
+    {
+        return $this->hasOne(UserStats::class);
     }
 
     /**
