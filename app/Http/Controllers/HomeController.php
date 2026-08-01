@@ -13,7 +13,7 @@ class HomeController extends Controller
     public function __invoke(BibleApiService $bibleApi): JsonResponse
     {
         $date = now()->toDateString();
-        $data = Cache::remember("home:v2:{$date}", now()->endOfDay(), function () use ($bibleApi, $date) {
+        $data = Cache::remember("home:v3:{$date}", now()->endOfDay(), function () use ($bibleApi, $date) {
             $count = BiblePassage::where('version', 'nvi')->count();
             if ($count > 0) {
                 $offset = abs(crc32($date)) % $count;
@@ -44,10 +44,15 @@ class HomeController extends Controller
             }
 
             $moments = DB::table('categories as c')
+                ->join('category_groups as cg', function ($join) {
+                    $join->on('cg.id', '=', 'c.category_group_id')
+                        ->where('cg.status', 'approved')
+                        ->where('cg.classification_kind', 'emotion');
+                })
                 ->leftJoin('user_verse_categories as uvc', 'uvc.category_id', '=', 'c.id')
                 ->where('c.status', 'approved')
-                ->groupBy('c.id', 'c.name', 'c.icon', 'c.color')
-                ->orderByRaw('COUNT(uvc.id) DESC')
+                ->groupBy('c.id', 'c.name', 'c.icon', 'c.color', 'c.display_order')
+                ->orderByRaw('COUNT(uvc.id) DESC, c.display_order ASC')
                 ->limit(8)
                 ->get(['c.id', 'c.name', 'c.icon', 'c.color'])
                 ->values();
