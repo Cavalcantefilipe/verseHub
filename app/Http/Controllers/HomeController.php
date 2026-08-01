@@ -13,7 +13,7 @@ class HomeController extends Controller
     public function __invoke(BibleApiService $bibleApi): JsonResponse
     {
         $date = now()->toDateString();
-        $data = Cache::remember("home:v1:{$date}", now()->endOfDay(), function () use ($bibleApi, $date) {
+        $data = Cache::remember("home:v2:{$date}", now()->endOfDay(), function () use ($bibleApi, $date) {
             $count = BiblePassage::where('version', 'nvi')->count();
             if ($count > 0) {
                 $offset = abs(crc32($date)) % $count;
@@ -28,7 +28,19 @@ class HomeController extends Controller
                     'verse_number' => $passage->verse_number,
                 ];
             } else {
-                $daily = $bibleApi->getRandomVerse('nvi');
+                $random = $bibleApi->getRandomVerse('nvi');
+                $bookName = $random['book']['name'] ?? null;
+                $chapter = $random['chapter'] ?? null;
+                $number = $random['number'] ?? null;
+                $daily = $random ? [
+                    'reference' => $bookName && $chapter && $number ? "{$bookName} {$chapter}:{$number}" : 'Leitura de hoje',
+                    'text' => $random['text'] ?? '',
+                    'version' => 'NVI',
+                    'book_abbrev' => $random['book']['abbrev']['pt'] ?? null,
+                    'book_name' => $bookName,
+                    'chapter' => $chapter,
+                    'verse_number' => $number,
+                ] : null;
             }
 
             $moments = DB::table('categories as c')
