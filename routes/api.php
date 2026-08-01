@@ -7,6 +7,9 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BibleController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ReaderController;
 // Legacy controllers — tables renamed to *_off, kept for reference
 // use App\Http\Controllers\BibleVersionController;
 // use App\Http\Controllers\VerseController;
@@ -14,19 +17,6 @@ use App\Http\Controllers\SiteSettingController;
 use App\Http\Controllers\VerseClassificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
-// ============================================
-// Temporary: trigger cache warm via HTTP
-// ============================================
-Route::get('warm-cache-trigger-9x7k', function () {
-    // Run in background to avoid HTTP timeout
-    exec('php /app/artisan bible:warm-cache > /app/storage/logs/warm-cache.log 2>&1 &');
-
-    return response()->json([
-        'status' => 'started',
-        'message' => 'Cache warming running in background. Check /api/bible-cache/status to monitor progress.',
-    ]);
-})->name('warm-cache-trigger');
 
 // ============================================
 // Authentication Routes
@@ -119,7 +109,24 @@ Route::middleware('auth:api')->group(function () {
     Route::get('my-classification', [VerseClassificationController::class, 'getByReference'])->name('classifications.by-reference');
 });
 Route::get('verse-stats', [VerseClassificationController::class, 'getVerseStats'])->name('classifications.verse-stats');
-Route::get('community-feed', [VerseClassificationController::class, 'communityFeed'])->name('classifications.community-feed');
+Route::get('community-feed', [CommunityController::class, 'index'])->name('classifications.community-feed');
+Route::get('home', HomeController::class);
+Route::get('community/ranking', [ReaderController::class, 'ranking']);
+Route::get('community/posts/{post}/comments', [CommunityController::class, 'comments'])->whereNumber('post');
+
+Route::middleware('auth:api')->group(function () {
+    Route::post('community/posts/{post}/like', [CommunityController::class, 'like'])->whereNumber('post');
+    Route::delete('community/posts/{post}/like', [CommunityController::class, 'unlike'])->whereNumber('post');
+    Route::post('community/posts/{post}/comments', [CommunityController::class, 'storeComment'])->whereNumber('post');
+    Route::post('community/reports', [CommunityController::class, 'report']);
+    Route::get('me/reading-state', [ReaderController::class, 'readingState']);
+    Route::put('me/reading-state', [ReaderController::class, 'updateReadingState']);
+    Route::get('me/saved-verses', [ReaderController::class, 'saved']);
+    Route::put('me/saved-verses', [ReaderController::class, 'save']);
+    Route::delete('me/saved-verses/{savedVerse}', [ReaderController::class, 'remove'])->whereNumber('savedVerse');
+    Route::get('me/public-profile', [ReaderController::class, 'profile']);
+    Route::put('me/public-profile', [ReaderController::class, 'profile']);
+});
 
 // ============================================
 // Public verse classifications view — DISABLED (uses old verses table)
@@ -167,7 +174,7 @@ Route::get('bible-api/test', function () {
 })->name('bible-api.test');
 
 // Status do cache da Bíblia
-Route::get('bible-cache/status', function () {
+Route::middleware(['auth:api', 'admin'])->get('bible-cache/status', function () {
     $books = [
         'gn' => 50, 'ex' => 40, 'lv' => 27, 'nm' => 36, 'dt' => 34,
         'js' => 24, 'jz' => 21, 'rt' => 4, '1sm' => 31, '2sm' => 24,

@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\UserVerseCategory;
 use App\Models\Verse;
 use App\Services\ActivityEventService;
+use App\Services\CommunityFeedService;
 use App\Services\VerseClassificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ class VerseClassificationController extends Controller
 {
     public function __construct(
         protected VerseClassificationService $classificationService,
-        protected ActivityEventService $activityEventService
+        protected ActivityEventService $activityEventService,
+        protected CommunityFeedService $communityFeedService
     ) {}
 
     /**
@@ -190,15 +192,18 @@ class VerseClassificationController extends Controller
                 ->where('bible_verse_id', $bibleVerse->id)
                 ->delete();
 
-            // Insert new categories
-            foreach ($validCategoryIds as $categoryId) {
-                UserVerseCategory::create([
-                    'user_id' => $user->id,
-                    'bible_verse_id' => $bibleVerse->id,
-                    'category_id' => $categoryId,
-                ]);
-            }
+            $now = now();
+            UserVerseCategory::insert(collect($validCategoryIds)->map(fn ($categoryId) => [
+                'user_id' => $user->id,
+                'device_id' => null,
+                'bible_verse_id' => $bibleVerse->id,
+                'category_id' => $categoryId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all());
         });
+
+        $this->communityFeedService->refreshVerse($bibleVerse->id);
 
         $this->activityEventService->track(
             $user,
@@ -241,12 +246,15 @@ class VerseClassificationController extends Controller
     {
         $validated = $request->validate([
             'reference' => 'required|string|max:255',
+            'version' => 'nullable|string|max:10',
         ]);
 
         $user = Auth::user();
 
         // Find the bible verse matching this reference
-        $bibleVerse = BibleVerse::where('reference', $validated['reference'])->first();
+        $bibleVerse = BibleVerse::where('reference', $validated['reference'])
+            ->when($validated['version'] ?? null, fn ($query, $version) => $query->where('version', $version))
+            ->first();
 
         if (! $bibleVerse) {
             return response()->json([
@@ -311,13 +319,14 @@ class VerseClassificationController extends Controller
     {
         $user = Auth::user();
 
-        // Get distinct bible_verse_ids classified by this user, ordered by latest
-        $verseIds = UserVerseCategory::where('user_id', $user->id)
+        $perPage = min(50, max(1, (int) $request->get('per_page', 20)));
+        $page = UserVerseCategory::where('user_id', $user->id)
             ->select('bible_verse_id')
-            ->selectRaw('MAX(created_at) as latest_at')
+            ->selectRaw('MAX(id) as latest_id')
             ->groupBy('bible_verse_id')
-            ->orderByDesc('latest_at')
-            ->pluck('bible_verse_id');
+            ->orderByDesc('latest_id')
+            ->cursorPaginate($perPage);
+        $verseIds = collect($page->items())->pluck('bible_verse_id');
 
         $bibleVerses = BibleVerse::whereIn('id', $verseIds)->get()->keyBy('id');
 
@@ -364,6 +373,10 @@ class VerseClassificationController extends Controller
 
         return response()->json([
             'data' => $classifications,
+            'meta' => [
+                'next_cursor' => $page->nextCursor()?->encode(),
+                'has_more' => $page->hasMorePages(),
+            ],
             'message' => 'User classifications retrieved successfully',
         ]);
     }
@@ -398,37 +411,26 @@ class VerseClassificationController extends Controller
             ]);
         }
 
-        // Só consideramos categorias aprovadas no agregado público.
-        $approvedCategoryIds = Category::where('status', 'approved')->pluck('id');
+        $totalPeople = (int) UserVerseCategory::query()
+            ->join('categories', 'categories.id', '=', 'user_verse_categories.category_id')
+            ->where('bible_verse_id', $bibleVerse->id)->where('categories.status', 'approved')
+            ->distinct('user_id')->count('user_id');
 
-        $verseClassifications = UserVerseCategory::where('bible_verse_id', $bibleVerse->id)
-            ->whereIn('category_id', $approvedCategoryIds)
-            ->whereNotNull('user_id')
-            ->get();
-
-        $totalPeople = $verseClassifications->pluck('user_id')->unique()->count();
-
-        $categoryCounts = UserVerseCategory::where('bible_verse_id', $bibleVerse->id)
-            ->whereIn('category_id', $approvedCategoryIds)
-            ->select('category_id', DB::raw('COUNT(*) as count'))
-            ->groupBy('category_id')
+        $categoryCounts = UserVerseCategory::query()
+            ->join('categories', 'categories.id', '=', 'user_verse_categories.category_id')
+            ->where('bible_verse_id', $bibleVerse->id)->where('categories.status', 'approved')
+            ->select('categories.id as category_id', 'categories.name', 'categories.icon', 'categories.color')
+            ->selectRaw('COUNT(*) as count')
+            ->groupBy('categories.id', 'categories.name', 'categories.icon', 'categories.color')
             ->orderByDesc('count')
             ->get();
 
-        $categoryIds = $categoryCounts->pluck('category_id')->toArray();
-        $categories = Category::whereIn('id', $categoryIds)->get()->keyBy('id');
-
-        $stats = $categoryCounts->map(function ($row) use ($categories, $totalPeople) {
-            $category = $categories->get($row->category_id);
-            if (! $category) {
-                return null;
-            }
-
+        $stats = $categoryCounts->map(function ($row) use ($totalPeople) {
             return [
-                'category_id' => $category->id,
-                'category_name' => $category->name,
-                'category_icon' => $category->icon,
-                'category_color' => $category->color,
+                'category_id' => $row->category_id,
+                'category_name' => $row->name,
+                'category_icon' => $row->icon,
+                'category_color' => $row->color,
                 'count' => $row->count,
                 'percentage' => $totalPeople > 0
                     ? round(($row->count / $totalPeople) * 100, 1)

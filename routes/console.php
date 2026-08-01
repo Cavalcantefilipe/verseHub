@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 // Cachear todos os capítulos da Bíblia no 1º dia de cada mês às 3h
 Schedule::command('bible:warm-cache')->monthlyOn(1, '03:00');
+Schedule::command('bible:index-search')->monthlyOn(1, '04:00')->withoutOverlapping();

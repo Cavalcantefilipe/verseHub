@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BiblePassage;
 use App\Services\BibleApiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class BibleController extends Controller
 {
@@ -27,10 +29,10 @@ class BibleController extends Controller
         try {
             $data = $this->bibleApiService->getChapterVerses($version, $book, $chapter);
 
-            if (!$data) {
+            if (! $data) {
                 return response()->json([
                     'message' => 'Chapter not found or API error',
-                    'error' => 'Unable to retrieve chapter data'
+                    'error' => 'Unable to retrieve chapter data',
                 ], 404);
             }
 
@@ -41,14 +43,15 @@ class BibleController extends Controller
                     'version' => $version,
                     'book' => $book,
                     'chapter' => $chapter,
-                    'verse_count' => count($data['verses'] ?? [])
-                ]
+                    'verse_count' => count($data['verses'] ?? []),
+                ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving chapter: ' . $e->getMessage());
+            Log::error('Error retrieving chapter: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'Error retrieving chapter',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -72,7 +75,7 @@ class BibleController extends Controller
                 if ($verseStart > $verseEnd) {
                     return response()->json([
                         'message' => 'Invalid verse range',
-                        'error' => 'Start verse must be less than or equal to end verse'
+                        'error' => 'Start verse must be less than or equal to end verse',
                     ], 400);
                 }
             } else {
@@ -82,10 +85,10 @@ class BibleController extends Controller
 
             $data = $this->bibleApiService->getVerse($version, $book, $chapter, $verseStart, $verseEnd);
 
-            if (!$data || empty($data['verses'])) {
+            if (! $data || empty($data['verses'])) {
                 return response()->json([
                     'message' => 'Verse(s) not found',
-                    'error' => 'Unable to retrieve verse data'
+                    'error' => 'Unable to retrieve verse data',
                 ], 404);
             }
 
@@ -97,14 +100,15 @@ class BibleController extends Controller
                     'book' => $book,
                     'chapter' => $chapter,
                     'verse_range' => $verseEnd ? "$verseStart-$verseEnd" : (string) $verseStart,
-                    'verse_count' => count($data['verses'])
-                ]
+                    'verse_count' => count($data['verses']),
+                ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving verses: ' . $e->getMessage());
+            Log::error('Error retrieving verses: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'Error retrieving verses',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -119,10 +123,10 @@ class BibleController extends Controller
         try {
             $data = $this->bibleApiService->getRandomVerse($version);
 
-            if (!$data) {
+            if (! $data) {
                 return response()->json([
                     'message' => 'Unable to retrieve random verse',
-                    'error' => 'API error or version not found'
+                    'error' => 'API error or version not found',
                 ], 404);
             }
 
@@ -130,14 +134,15 @@ class BibleController extends Controller
                 'data' => $data,
                 'message' => 'Random verse retrieved successfully',
                 'meta' => [
-                    'version' => $version
-                ]
+                    'version' => $version,
+                ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving random verse: ' . $e->getMessage());
+            Log::error('Error retrieving random verse: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'Error retrieving random verse',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -152,12 +157,14 @@ class BibleController extends Controller
             'book' => 'sometimes|string|max:10',
             'chapter' => 'sometimes|integer|min:1',
             'q' => 'sometimes|string|min:2',
+            'page' => 'sometimes|integer|min:1',
+            'per_page' => 'sometimes|integer|min:1|max:50',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -165,6 +172,45 @@ class BibleController extends Controller
             $book = $request->query('book');
             $chapter = $request->query('chapter');
             $query = $request->query('q');
+
+            if ($query && ! $chapter) {
+                $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
+                $search = BiblePassage::query()->where('version', strtolower($version));
+                if ($book) {
+                    $search->where('book_abbrev', strtolower($book));
+                }
+
+                if (DB::getDriverName() === 'mysql') {
+                    $search->select('*')
+                        ->selectRaw('MATCH(text) AGAINST (? IN NATURAL LANGUAGE MODE) AS relevance', [$query])
+                        ->whereRaw('MATCH(text) AGAINST (? IN NATURAL LANGUAGE MODE)', [$query])
+                        ->orderByDesc('relevance');
+                } else {
+                    $search->where('text', 'like', '%'.$query.'%');
+                }
+
+                $results = $search->orderBy('id')->paginate($perPage);
+
+                return response()->json([
+                    'data' => collect($results->items())->map(fn ($passage) => [
+                        'id' => $passage->id,
+                        'reference' => "{$passage->book_name} {$passage->chapter}:{$passage->verse_number}",
+                        'text' => $passage->text,
+                        'version' => strtoupper($passage->version),
+                        'book_abbrev' => $passage->book_abbrev,
+                        'book_name' => $passage->book_name,
+                        'chapter' => $passage->chapter,
+                        'verse_number' => $passage->verse_number,
+                    ]),
+                    'meta' => [
+                        'current_page' => $results->currentPage(),
+                        'last_page' => $results->lastPage(),
+                        'per_page' => $results->perPage(),
+                        'total' => $results->total(),
+                        'query' => $query,
+                    ],
+                ]);
+            }
 
             // If book and chapter provided, search within that chapter
             if ($book && $chapter) {
@@ -188,20 +234,21 @@ class BibleController extends Controller
                         'book' => $book,
                         'chapter' => $chapter,
                         'query' => $query,
-                        'result_count' => count($data['verses'] ?? [])
-                    ]
+                        'result_count' => count($data['verses'] ?? []),
+                    ],
                 ]);
             }
 
             return response()->json([
-                'message' => 'Please provide at least book and chapter parameters',
-                'error' => 'Insufficient search parameters'
+                'message' => 'Informe um texto para busca global ou livro e capítulo.',
+                'error' => 'Insufficient search parameters',
             ], 400);
         } catch (\Exception $e) {
-            Log::error('Error searching verses: ' . $e->getMessage());
+            Log::error('Error searching verses: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'Error searching verses',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -219,14 +266,15 @@ class BibleController extends Controller
                 'data' => $versions,
                 'message' => 'Bible versions retrieved successfully',
                 'meta' => [
-                    'count' => count($versions)
-                ]
+                    'count' => count($versions),
+                ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving Bible versions: ' . $e->getMessage());
+            Log::error('Error retrieving Bible versions: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'Error retrieving Bible versions',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -242,10 +290,10 @@ class BibleController extends Controller
             // Get first chapter to extract book information
             $data = $this->bibleApiService->getChapterVerses($version, $book, 1);
 
-            if (!$data) {
+            if (! $data) {
                 return response()->json([
                     'message' => 'Book not found',
-                    'error' => 'Unable to retrieve book information'
+                    'error' => 'Unable to retrieve book information',
                 ], 404);
             }
 
@@ -253,15 +301,16 @@ class BibleController extends Controller
                 'data' => [
                     'book' => $data['book'] ?? null,
                     'version' => $version,
-                    'abbreviation' => $book
+                    'abbreviation' => $book,
                 ],
-                'message' => 'Book information retrieved successfully'
+                'message' => 'Book information retrieved successfully',
             ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving book info: ' . $e->getMessage());
+            Log::error('Error retrieving book info: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'Error retrieving book information',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
