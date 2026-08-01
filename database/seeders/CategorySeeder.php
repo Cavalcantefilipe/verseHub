@@ -19,11 +19,38 @@ class CategorySeeder extends Seeder
     {
         $groups = [
             [
+                'slug' => 'sentimentos',
+                'name' => 'Sentimentos',
+                'classification_kind' => 'emotion',
+                'selection_prompt' => 'O que você sentiu ao ler este versículo?',
+                'selection_limit' => 3,
+                'icon' => 'heart-outline',
+                'color' => '#db2777',
+                'display_order' => 0,
+                'categories' => [
+                    ['slug' => 'sentindo-paz', 'name' => 'Em paz', 'icon' => 'leaf-outline', 'color' => '#059669'],
+                    ['slug' => 'sentindo-esperanca', 'name' => 'Com esperança', 'icon' => 'sunny-outline', 'color' => '#ca8a04'],
+                    ['slug' => 'sentindo-gratidao', 'name' => 'Com gratidão', 'icon' => 'heart-outline', 'color' => '#db2777'],
+                    ['slug' => 'sentindo-coragem', 'name' => 'Com coragem', 'icon' => 'shield-checkmark-outline', 'color' => '#2563eb'],
+                    ['slug' => 'sentindo-ansiedade', 'name' => 'Com ansiedade', 'icon' => 'pulse-outline', 'color' => '#ea580c'],
+                    ['slug' => 'sentindo-tristeza', 'name' => 'Com tristeza', 'icon' => 'sad-outline', 'color' => '#475569'],
+                    ['slug' => 'sentindo-medo', 'name' => 'Com medo', 'icon' => 'alert-circle-outline', 'color' => '#64748b'],
+                    ['slug' => 'sentindo-solidao', 'name' => 'Só', 'icon' => 'person-outline', 'color' => '#7c3aed'],
+                    ['slug' => 'sentindo-cansaco', 'name' => 'Cansado', 'icon' => 'bed-outline', 'color' => '#a16207'],
+                    ['slug' => 'sentindo-culpa', 'name' => 'Com culpa', 'icon' => 'rainy-outline', 'color' => '#991b1b'],
+                    ['slug' => 'sentindo-raiva', 'name' => 'Com raiva', 'icon' => 'flame-outline', 'color' => '#dc2626'],
+                    ['slug' => 'sentindo-confusao', 'name' => 'Confuso', 'icon' => 'help-circle-outline', 'color' => '#4f46e5'],
+                ],
+            ],
+            [
                 'slug' => 'vida-emocional',
                 'name' => 'Vida Emocional',
                 'icon' => 'heart-outline',
                 'color' => '#ec4899',
                 'display_order' => 1,
+                'classification_kind' => 'context',
+                'selection_prompt' => 'O que você está vivendo?',
+                'selection_limit' => null,
                 'categories' => [
                     ['slug' => 'quando-bate-ansiedade', 'name' => '…bate a ansiedade ou a preocupação', 'icon' => 'pulse-outline', 'color' => '#f97316'],
                     ['slug' => 'quando-sinto-medo', 'name' => '…sinto medo', 'icon' => 'alert-circle-outline', 'color' => '#64748b'],
@@ -38,6 +65,9 @@ class CategorySeeder extends Seeder
                 'icon' => 'people-outline',
                 'color' => '#3b82f6',
                 'display_order' => 2,
+                'classification_kind' => 'context',
+                'selection_prompt' => 'O que você está vivendo?',
+                'selection_limit' => null,
                 'categories' => [
                     ['slug' => 'quando-solidao-me-toma', 'name' => '…a solidão me toma', 'icon' => 'person-outline', 'color' => '#64748b'],
                     ['slug' => 'quando-conflito-com-alguem', 'name' => '…estou em conflito com alguém', 'icon' => 'flash-outline', 'color' => '#dc2626'],
@@ -52,6 +82,9 @@ class CategorySeeder extends Seeder
                 'icon' => 'walk-outline',
                 'color' => '#7c3aed',
                 'display_order' => 3,
+                'classification_kind' => 'context',
+                'selection_prompt' => 'O que você está vivendo?',
+                'selection_limit' => null,
                 'categories' => [
                     ['slug' => 'quando-carrego-culpa', 'name' => '…carrego culpa', 'icon' => 'sad-outline', 'color' => '#7f1d1d'],
                     ['slug' => 'quando-preciso-perdoar', 'name' => '…preciso perdoar', 'icon' => 'hand-left-outline', 'color' => '#14b8a6'],
@@ -66,6 +99,9 @@ class CategorySeeder extends Seeder
                 'icon' => 'compass-outline',
                 'color' => '#0891b2',
                 'display_order' => 4,
+                'classification_kind' => 'context',
+                'selection_prompt' => 'O que você está vivendo?',
+                'selection_limit' => null,
                 'categories' => [
                     ['slug' => 'quando-nao-sei-o-que-fazer', 'name' => '…não sei o que fazer', 'icon' => 'help-circle-outline', 'color' => '#6366f1'],
                     ['slug' => 'quando-penso-no-futuro', 'name' => '…penso no futuro', 'icon' => 'calendar-outline', 'color' => '#3b82f6'],
@@ -81,6 +117,9 @@ class CategorySeeder extends Seeder
                 ['slug' => $groupData['slug']],
                 [
                     'name' => $groupData['name'],
+                    'classification_kind' => $groupData['classification_kind'],
+                    'selection_prompt' => $groupData['selection_prompt'],
+                    'selection_limit' => $groupData['selection_limit'],
                     'icon' => $groupData['icon'],
                     'color' => $groupData['color'],
                     'display_order' => $groupData['display_order'],

@@ -16,6 +16,9 @@ class CategoryGroup extends Model
     protected $fillable = [
         'name',
         'slug',
+        'classification_kind',
+        'selection_prompt',
+        'selection_limit',
         'icon',
         'color',
         'display_order',
@@ -31,6 +34,7 @@ class CategoryGroup extends Model
         return [
             'approved_at' => 'datetime',
             'display_order' => 'integer',
+            'selection_limit' => 'integer',
         ];
     }
 

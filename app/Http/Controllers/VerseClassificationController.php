@@ -148,8 +148,8 @@ class VerseClassificationController extends Controller
             'reference' => 'required|string|max:255',
             'text' => 'required|string',
             'version' => 'required|string|max:10',
-            'category_ids' => 'required|array|min:1',
-            'category_ids.*' => 'exists:categories,id',
+            'category_ids' => 'required|array|min:1|max:8',
+            'category_ids.*' => 'integer|distinct',
         ]);
 
         $user = Auth::user();
@@ -157,20 +157,29 @@ class VerseClassificationController extends Controller
         // Em v2, validamos que cada category_id é visível pra esse usuário:
         // - aprovada (qualquer um pode usar), ou
         // - pendente E criada por ele mesmo (privada por enquanto).
-        $validCategoryIds = Category::whereIn('id', $validated['category_ids'])
+        $visibleCategories = Category::query()
+            ->leftJoin('category_groups as category_group', 'category_group.id', '=', 'categories.category_group_id')
+            ->whereIn('categories.id', $validated['category_ids'])
             ->where(function ($q) use ($user) {
-                $q->where('status', 'approved')
+                $q->where('categories.status', 'approved')
                     ->orWhere(function ($q2) use ($user) {
-                        $q2->where('status', 'pending')
-                            ->where('created_by_user_id', $user->id);
+                        $q2->where('categories.status', 'pending')
+                            ->where('categories.created_by_user_id', $user->id);
                     });
             })
-            ->pluck('id')
-            ->all();
+            ->get(['categories.id', 'category_group.classification_kind']);
+
+        $validCategoryIds = $visibleCategories->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         if (count($validCategoryIds) !== count($validated['category_ids'])) {
             return response()->json([
                 'message' => 'Uma ou mais categorias não estão disponíveis.',
+            ], 422);
+        }
+
+        if ($visibleCategories->where('classification_kind', 'emotion')->count() > 3) {
+            return response()->json([
+                'message' => 'Escolha no máximo três sentimentos.',
             ], 422);
         }
 

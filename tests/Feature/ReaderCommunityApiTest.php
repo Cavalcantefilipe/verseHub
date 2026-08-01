@@ -69,6 +69,42 @@ class ReaderCommunityApiTest extends TestCase
         $this->assertDatabaseCount('user_saved_verses', 1);
     }
 
+    public function test_classification_limits_emotions_to_three(): void
+    {
+        $user = User::factory()->create();
+        $headers = $this->authHeaders($user);
+        $group = CategoryGroup::create([
+            'name' => 'Sentimentos',
+            'slug' => 'sentimentos-teste',
+            'classification_kind' => 'emotion',
+            'selection_limit' => 3,
+            'status' => 'approved',
+        ]);
+        $categoryIds = collect(['Em paz', 'Com esperança', 'Com gratidão', 'Com coragem'])
+            ->map(fn (string $name, int $index) => Category::create([
+                'name' => $name,
+                'slug' => "sentimento-teste-{$index}",
+                'category_group_id' => $group->id,
+                'status' => 'approved',
+            ])->id)
+            ->all();
+
+        $payload = [
+            'reference' => 'Salmos 23:1',
+            'version' => 'NVI',
+            'text' => 'O Senhor é o meu pastor.',
+            'category_ids' => $categoryIds,
+        ];
+
+        $this->postJson('/api/classify-auth', $payload, $headers)
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Escolha no máximo três sentimentos.');
+
+        $this->postJson('/api/classify-auth', [...$payload, 'category_ids' => array_slice($categoryIds, 0, 3)], $headers)
+            ->assertCreated()
+            ->assertJsonCount(3, 'data.categories');
+    }
+
     private function classifiedVerse(): array
     {
         $user = User::factory()->create();
