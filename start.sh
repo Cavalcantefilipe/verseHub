@@ -38,6 +38,9 @@ echo ""
 echo "Starting Laravel scheduler (cron)..."
 (while true; do php /app/artisan schedule:run --no-interaction >> /app/storage/logs/scheduler.log 2>&1; sleep 60; done) &
 
+echo "Starting Laravel queue worker..."
+php /app/artisan queue:work --sleep=3 --tries=3 --timeout=90 --max-time=3600 >> /app/storage/logs/queue.log 2>&1 &
+
 echo ""
 echo "Starting php-fpm..."
 php-fpm -D

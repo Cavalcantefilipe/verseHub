@@ -9,6 +9,10 @@ use App\Models\CategoryGroup;
 use App\Models\User;
 use App\Models\UserActivityEvent;
 use App\Models\UserVerseCategory;
+use App\Models\DailyVerse;
+use App\Models\PushCampaign;
+use App\Models\PushDevice;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,12 +33,17 @@ class AdminDashboardController extends Controller
                 'total_approved_groups' => CategoryGroup::where('status', 'approved')->count(),
                 'total_users' => User::count(),
                 'total_admins' => User::where('is_admin', true)->count(),
+                'banned_users' => User::where('is_banned', true)->count(),
                 'blocked_creators' => User::where('can_create_categories', false)->count(),
                 'classifications_today' => UserVerseCategory::where('created_at', '>=', $today)->count(),
                 'active_users_today' => UserActivityEvent::where('created_at', '>=', $today)
                     ->distinct('user_id')
                     ->count('user_id'),
                 'classifications_total' => UserVerseCategory::count(),
+                'pending_reports' => DB::table('community_reports')->where('status', 'pending')->count(),
+                'active_push_devices' => PushDevice::where('enabled', true)->count(),
+                'scheduled_push_campaigns' => PushCampaign::where('status', 'scheduled')->count(),
+                'daily_verses_next_30_days' => DailyVerse::whereBetween('publish_date', [now()->toDateString(), now()->addDays(30)->toDateString()])->where('is_active', true)->count(),
             ],
         ]);
     }

@@ -4,12 +4,16 @@ use App\Http\Controllers\Admin\AdminCategoryController;
 use App\Http\Controllers\Admin\AdminCategoryGroupController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\AdminDailyVerseController;
+use App\Http\Controllers\Admin\AdminModerationController;
+use App\Http\Controllers\Admin\AdminPushController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BibleController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ReaderController;
+use App\Http\Controllers\PushDeviceController;
 // Legacy controllers — tables renamed to *_off, kept for reference
 // use App\Http\Controllers\BibleVersionController;
 // use App\Http\Controllers\VerseController;
@@ -35,7 +39,7 @@ Route::prefix('auth')->group(function () {
     Route::post('apple', [AuthController::class, 'loginWithApple']);
 
     // Protected routes (JWT)
-    Route::middleware('auth:api')->group(function () {
+    Route::middleware(['auth:api', 'active'])->group(function () {
         Route::get('user', [AuthController::class, 'user']);
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
@@ -46,7 +50,7 @@ Route::prefix('auth')->group(function () {
 // Legacy user endpoint (kept for backwards compatibility)
 Route::get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:api');
+})->middleware(['auth:api', 'active']);
 
 // ============================================
 // Bible Versions — DISABLED (tables renamed to *_off)
@@ -78,7 +82,7 @@ Route::get('/user', function (Request $request) {
 Route::get('categories', [CategoryController::class, 'index']);
 
 // Categorias custom criadas pelos usuários (auth)
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['auth:api', 'active'])->group(function () {
     Route::get('categories/mine', [CategoryController::class, 'mine']);
     Route::post('categories/custom', [CategoryController::class, 'storeCustom']);
     Route::delete('categories/custom/{category}', [CategoryController::class, 'destroyCustom'])
@@ -103,7 +107,7 @@ Route::get('categories/{category}', [CategoryController::class, 'show'])
 // Route::get('my-classifications', ...); // REMOVED — use my-classifications-auth instead
 
 // Authenticated classification (requires Google login)
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['auth:api', 'active'])->group(function () {
     Route::post('classify', [VerseClassificationController::class, 'classifyAuth'])->name('classifications.public'); // legacy alias
     Route::post('classify-auth', [VerseClassificationController::class, 'classifyAuth'])->name('classifications.auth');
     Route::get('my-classifications', [VerseClassificationController::class, 'getByUser'])->name('classifications.by-device'); // legacy alias
@@ -117,7 +121,7 @@ Route::get('community/ranking', [ReaderController::class, 'ranking']);
 Route::get('community/users/{user}', [ReaderController::class, 'publicProfile'])->whereNumber('user');
 Route::get('community/posts/{post}/comments', [CommunityController::class, 'comments'])->whereNumber('post');
 
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['auth:api', 'active'])->group(function () {
     Route::post('community/posts/{post}/like', [CommunityController::class, 'like'])->whereNumber('post');
     Route::delete('community/posts/{post}/like', [CommunityController::class, 'unlike'])->whereNumber('post');
     Route::post('community/posts/{post}/comments', [CommunityController::class, 'storeComment'])->whereNumber('post');
@@ -130,6 +134,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('me/public-profile', [ReaderController::class, 'profile']);
     Route::put('me/public-profile', [ReaderController::class, 'profile']);
     Route::post('me/profile-avatar', [ReaderController::class, 'updateAvatar']);
+    Route::put('me/push-devices', [PushDeviceController::class, 'upsert']);
+    Route::delete('me/push-devices', [PushDeviceController::class, 'destroy']);
 });
 
 // ============================================
@@ -178,7 +184,7 @@ Route::get('bible-api/test', function () {
 })->name('bible-api.test');
 
 // Status do cache da Bíblia
-Route::middleware(['auth:api', 'admin'])->get('bible-cache/status', function () {
+Route::middleware(['auth:api', 'active', 'admin'])->get('bible-cache/status', function () {
     $books = [
         'gn' => 50, 'ex' => 40, 'lv' => 27, 'nm' => 36, 'dt' => 34,
         'js' => 24, 'jz' => 21, 'rt' => 4, '1sm' => 31, '2sm' => 24,
@@ -229,7 +235,7 @@ Route::middleware(['auth:api', 'admin'])->get('bible-cache/status', function () 
 // ============================================
 // Site Settings (backoffice - authenticated)
 // ============================================
-Route::middleware('auth:api')->prefix('settings')->group(function () {
+Route::middleware(['auth:api', 'active', 'admin'])->prefix('settings')->group(function () {
     Route::get('/', [SiteSettingController::class, 'index']);
     Route::put('/', [SiteSettingController::class, 'update']);
 });
@@ -240,7 +246,7 @@ Route::get('site-scripts', [SiteSettingController::class, 'scripts']);
 // ============================================
 // ADMIN API (consumida pelo site React admin)
 // ============================================
-Route::middleware(['auth:api', 'admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:api', 'active', 'admin'])->prefix('admin')->group(function () {
     // Dashboard + audit
     Route::get('dashboard', [AdminDashboardController::class, 'index']);
     Route::get('audit-log', [AdminDashboardController::class, 'auditLog']);
@@ -270,6 +276,25 @@ Route::middleware(['auth:api', 'admin'])->prefix('admin')->group(function () {
     Route::post('users/{user}/unblock-categories', [AdminUserController::class, 'unblockCategories']);
     Route::post('users/{user}/promote', [AdminUserController::class, 'promote']);
     Route::post('users/{user}/demote', [AdminUserController::class, 'demote']);
+    Route::patch('users/{user}/identity', [AdminUserController::class, 'updateIdentity']);
+    Route::post('users/{user}/ban', [AdminUserController::class, 'setBan']);
+    Route::post('users/{user}/points', [AdminUserController::class, 'adjustPoints']);
+
+    // Moderação de comunidade
+    Route::get('moderation/reports', [AdminModerationController::class, 'reports']);
+    Route::patch('moderation/reports/{report}', [AdminModerationController::class, 'resolveReport'])->whereNumber('report');
+    Route::get('moderation/posts', [AdminModerationController::class, 'posts']);
+    Route::patch('moderation/posts/{post}', [AdminModerationController::class, 'updatePost']);
+    Route::get('moderation/comments', [AdminModerationController::class, 'comments']);
+    Route::patch('moderation/comments/{comment}', [AdminModerationController::class, 'updateComment']);
+
+    // Conteúdo editorial
+    Route::apiResource('daily-verses', AdminDailyVerseController::class)->except(['show']);
+
+    // Notificações push
+    Route::get('push-campaigns', [AdminPushController::class, 'index']);
+    Route::post('push-campaigns', [AdminPushController::class, 'store']);
+    Route::post('push-campaigns/{campaign}/send', [AdminPushController::class, 'send']);
 });
 
 // ============================================

@@ -30,6 +30,9 @@ class User extends Authenticatable implements JWTSubject
         'avatar',
         'email_verified_at',
         'is_admin',
+        'is_banned',
+        'banned_at',
+        'banned_reason',
         'can_create_categories',
         'custom_categories_count',
     ];
@@ -55,6 +58,8 @@ class User extends Authenticatable implements JWTSubject
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'is_banned' => 'boolean',
+            'banned_at' => 'datetime',
             'can_create_categories' => 'boolean',
             'custom_categories_count' => 'integer',
         ];
@@ -78,6 +83,11 @@ class User extends Authenticatable implements JWTSubject
     public function stats()
     {
         return $this->hasOne(UserStats::class);
+    }
+
+    public function pushDevices(): HasMany
+    {
+        return $this->hasMany(PushDevice::class);
     }
 
     /**

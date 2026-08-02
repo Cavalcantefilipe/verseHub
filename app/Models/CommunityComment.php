@@ -7,7 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CommunityComment extends Model
 {
-    protected $fillable = ['community_post_id', 'user_id', 'body', 'status'];
+    protected $fillable = ['community_post_id', 'user_id', 'body', 'status', 'is_featured'];
+
+    protected function casts(): array
+    {
+        return ['is_featured' => 'boolean'];
+    }
 
     public function user(): BelongsTo
     {

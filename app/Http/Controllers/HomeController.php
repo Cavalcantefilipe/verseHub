@@ -3,22 +3,38 @@
 namespace App\Http\Controllers;
 
 use App\Models\BiblePassage;
-use App\Services\BibleApiService;
+use App\Models\DailyVerse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class HomeController extends Controller
 {
-    public function __invoke(BibleApiService $bibleApi): JsonResponse
+    public function __invoke(): JsonResponse
     {
         $date = now()->toDateString();
-        $data = Cache::remember("home:v3:{$date}", now()->endOfDay(), function () use ($bibleApi, $date) {
-            $count = BiblePassage::where('version', 'nvi')->count();
-            if ($count > 0) {
+        $data = Cache::remember("home:v4:{$date}", now()->endOfDay(), function () use ($date) {
+            $scheduled = DailyVerse::query()
+                ->whereDate('publish_date', $date)
+                ->where('is_active', true)
+                ->orderBy('position')
+                ->get()
+                ->map(fn (DailyVerse $verse) => [
+                    'reference' => $verse->reference,
+                    'text' => $verse->text,
+                    'version' => strtoupper($verse->version),
+                    'book_abbrev' => $verse->book_abbrev,
+                    'book_name' => $verse->book_name,
+                    'chapter' => $verse->chapter,
+                    'verse_number' => $verse->verse_number,
+                ])->values();
+
+            if ($scheduled->isNotEmpty()) {
+                $dailyVerses = $scheduled;
+            } elseif (($count = BiblePassage::where('version', 'nvi')->count()) > 0) {
                 $offset = abs(crc32($date)) % $count;
                 $passage = BiblePassage::where('version', 'nvi')->orderBy('id')->offset($offset)->first();
-                $daily = [
+                $dailyVerses = collect([[
                     'reference' => "{$passage->book_name} {$passage->chapter}:{$passage->verse_number}",
                     'text' => $passage->text,
                     'version' => strtoupper($passage->version),
@@ -26,21 +42,12 @@ class HomeController extends Controller
                     'book_name' => $passage->book_name,
                     'chapter' => $passage->chapter,
                     'verse_number' => $passage->verse_number,
-                ];
+                ]]);
             } else {
-                $random = $bibleApi->getRandomVerse('nvi');
-                $bookName = $random['book']['name'] ?? null;
-                $chapter = $random['chapter'] ?? null;
-                $number = $random['number'] ?? null;
-                $daily = $random ? [
-                    'reference' => $bookName && $chapter && $number ? "{$bookName} {$chapter}:{$number}" : 'Leitura de hoje',
-                    'text' => $random['text'] ?? '',
-                    'version' => 'NVI',
-                    'book_abbrev' => $random['book']['abbrev']['pt'] ?? null,
-                    'book_name' => $bookName,
-                    'chapter' => $chapter,
-                    'verse_number' => $number,
-                ] : null;
+                // Nunca exibe como "versículo do dia" uma resposta externa
+                // incompleta. O conteúdo editorial precisa vir do índice local
+                // ou do agendamento revisado por um administrador.
+                $dailyVerses = collect();
             }
 
             $moments = DB::table('categories as c')
@@ -57,7 +64,12 @@ class HomeController extends Controller
                 ->get(['c.id', 'c.name', 'c.icon', 'c.color'])
                 ->values();
 
-            return ['date' => $date, 'daily_verse' => $daily, 'moments' => $moments];
+            return [
+                'date' => $date,
+                'daily_verse' => $dailyVerses->first(),
+                'daily_verses' => $dailyVerses,
+                'moments' => $moments,
+            ];
         });
 
         return response()->json(['data' => $data]);

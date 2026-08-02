@@ -34,6 +34,5 @@ Route::get('/support', function () {
     return view('support');
 });
 
-Route::get('/admin/settings', function () {
-    return view('admin.settings');
-});
+Route::view('/admin', 'admin.dashboard')->name('admin.dashboard');
+Route::redirect('/admin/settings', '/admin#settings');
