@@ -96,13 +96,13 @@
             </ul>
 
             <h3>3. Conta de usuário</h3>
-            <p>O login é feito exclusivamente via Google OAuth. Você é responsável por manter a segurança da sua conta Google. Podemos suspender contas que violem estes termos.</p>
+            <p>O login pode ser feito com Google ou Apple. Você é responsável por manter a segurança da conta usada para autenticação. Podemos restringir ou suspender contas que violem estes termos, com medidas proporcionais à situação.</p>
 
             <h3>4. Conteúdo bíblico</h3>
-            <p>Os textos bíblicos exibidos no aplicativo são obtidos de fontes públicas e APIs de terceiros. O VerseHub não é responsável pela precisão das traduções. As versões disponíveis incluem NVI, ACF e Almeida Revista e Atualizada.</p>
+            <p>Os textos bíblicos são disponibilizados conforme as autorizações, licenças e condições dos respectivos detentores de direitos. A seleção de traduções pode variar por território ou ao longo do tempo. O VerseHub preserva o texto recebido das fontes autorizadas e exibe os créditos exigidos.</p>
 
-            <h3>5. Classificações</h3>
-            <p>As classificações de versículos são contribuições voluntárias dos usuários. As estatísticas da comunidade são geradas a partir dessas classificações e exibidas de forma agregada e anônima.</p>
+            <h3>5. Conteúdo da comunidade</h3>
+            <p>Sentimentos, classificações, comentários e publicações são contribuições voluntárias dos usuários. Você não deve publicar conteúdo ilegal, ofensivo, discriminatório, enganoso, abusivo ou que viole direitos de terceiros. O VerseHub pode analisar denúncias, limitar a visibilidade e remover conteúdo que viole estes termos.</p>
 
             <h3>6. Disponibilidade</h3>
             <p>O VerseHub é oferecido "como está". Nos esforçamos para manter o serviço disponível, mas não garantimos disponibilidade ininterrupta. Podemos modificar ou descontinuar funcionalidades a qualquer momento.</p>
@@ -121,7 +121,7 @@
             <p><strong>E-mail:</strong> <a href="mailto:contato@filipelab.com">contato@filipelab.com</a></p>
         </div>
 
-        <p class="updated">Última atualização: {{ date('d/m/Y') }}</p>
+        <p class="updated">Última atualização: 02/08/2026</p>
     </div>
 </body>
 </html>

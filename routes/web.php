@@ -30,6 +30,10 @@ Route::get('/delete-account', function () {
     return view('delete-account');
 });
 
+Route::get('/support', function () {
+    return view('support');
+});
+
 Route::get('/admin/settings', function () {
     return view('admin.settings');
 });
