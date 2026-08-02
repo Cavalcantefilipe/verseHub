@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "82FZ3XNPFC.com.filipelab.versehub"
+        ],
+        "components": [
+          {
+            "/": "/v*",
+            "comment": "Abrir compartilhamentos de versiculos no VerseHub"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.versehub.app",
+      "sha256_cert_fingerprints": [
+        "73:EA:B8:C3:11:0B:5F:00:B1:FB:C6:AB:7D:AF:80:BA:03:31:66:BE:47:F7:95:D4:7A:10:22:CD:D8:2A:D7:85"
+      ]
+    }
+  }
+]
