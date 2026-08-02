@@ -48,4 +48,8 @@ return [
         'client_redirect_allowed' => env('GOOGLE_CLIENT_REDIRECT_ALLOWED', ''),
     ],
 
+    'apple' => [
+        'client_id' => env('APPLE_CLIENT_ID', 'com.filipelab.versehub'),
+    ],
+
 ];

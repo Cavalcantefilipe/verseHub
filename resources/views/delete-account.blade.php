@@ -119,41 +119,37 @@
 
         <div class="card">
             <h2>Solicitar Exclusão de Conta e Dados</h2>
-            <p>Se você deseja excluir sua conta do VerseHub e todos os dados associados, siga as instruções abaixo.</p>
+            <p>Você pode excluir permanentemente sua conta do VerseHub e os dados associados diretamente no aplicativo.</p>
 
             <div class="steps">
-                <p>Como solicitar a exclusão:</p>
+                <p>Como excluir pelo app:</p>
                 <ol>
-                    <li>Envie um e-mail para <strong>contato@filipelab.com</strong></li>
-                    <li>Use o assunto: <strong>"Exclusão de conta VerseHub"</strong></li>
-                    <li>Informe o e-mail da conta Google que você usou para login</li>
-                    <li>Sua conta será excluída em até 7 dias úteis</li>
+                    <li>Abra o VerseHub e entre na sua conta.</li>
+                    <li>Acesse a tela <strong>Perfil</strong> e role até o final.</li>
+                    <li>Toque em <strong>Excluir minha conta e meus dados</strong>.</li>
+                    <li>Leia o aviso e confirme a exclusão permanente.</li>
                 </ol>
             </div>
 
-            <a href="mailto:contato@filipelab.com?subject=Exclus%C3%A3o%20de%20conta%20VerseHub&body=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20a%20exclus%C3%A3o%20da%20minha%20conta%20e%20dados%20do%20VerseHub.%0A%0AE-mail%20da%20conta%20Google%3A%20" class="email-link">Enviar e-mail de exclusão</a>
+            <p>Se você não consegue acessar o app, envie um e-mail pelo botão abaixo. Será necessário confirmar que a conta pertence a você.</p>
+            <a href="mailto:contato@filipelab.com?subject=Ajuda%20com%20exclus%C3%A3o%20de%20conta%20VerseHub" class="email-link">Pedir ajuda por e-mail</a>
 
             <h3>Dados que serão excluídos</h3>
             <ul>
-                <li><strong>Dados da conta:</strong> nome, e-mail e foto de perfil do Google.</li>
-                <li><strong>Classificações:</strong> todas as classificações de versículos feitas pela sua conta.</li>
-                <li><strong>Token de autenticação:</strong> invalidado imediatamente.</li>
-            </ul>
-
-            <h3>Dados que serão mantidos</h3>
-            <ul>
-                <li><strong>Estatísticas agregadas:</strong> contribuições anônimas para as estatísticas da comunidade podem ser mantidas de forma não identificável.</li>
+                <li><strong>Dados da conta e perfil:</strong> nome, e-mail, foto, biografia e preferências públicas.</li>
+                <li><strong>Conteúdo e interações:</strong> sentimentos, categorias, favoritos, destaques, anotações, comentários, curtidas e denúncias.</li>
+                <li><strong>Progresso:</strong> posição de leitura, pontos, nível, sequência e conquistas.</li>
             </ul>
 
             <div class="warning">
-                <p><strong>Atenção:</strong> a exclusão é permanente e não pode ser desfeita. Todas as suas classificações serão perdidas.</p>
+                <p><strong>Atenção:</strong> a exclusão é permanente e não pode ser desfeita.</p>
             </div>
 
             <h3>Contato</h3>
             <p>Para dúvidas, entre em contato: <a href="mailto:contato@filipelab.com">contato@filipelab.com</a></p>
         </div>
 
-        <p class="updated">Última atualização: {{ date('d/m/Y') }}</p>
+        <p class="updated">Última atualização: 01/08/2026</p>
     </div>
 </body>
 </html>

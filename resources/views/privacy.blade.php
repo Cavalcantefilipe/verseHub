@@ -81,53 +81,58 @@
 
         <div class="card">
             <h2>Política de Privacidade</h2>
-            <p>Esta política descreve como o VerseHub coleta, usa e protege suas informações pessoais.</p>
+            <p>Esta política descreve quais dados o VerseHub trata, por que eles são necessários e quais escolhas você tem. O aplicativo pode ser usado para leitura sem criar uma conta; os recursos de sincronização e comunidade exigem autenticação.</p>
 
             <h3>1. Informações que coletamos</h3>
             <p>Ao utilizar o VerseHub, podemos coletar:</p>
             <ul>
-                <li><strong>Dados da conta Google:</strong> nome, endereço de e-mail e foto de perfil, quando você opta por fazer login com o Google.</li>
-                <li><strong>Classificações de versículos:</strong> as categorias que você atribui aos versículos bíblicos.</li>
-                <li><strong>Identificador do dispositivo:</strong> um identificador anônimo usado para salvar classificações de usuários não autenticados.</li>
+                <li><strong>Conta e autenticação:</strong> nome, e-mail, identificador do provedor e, quando disponível, foto de perfil recebidos ao entrar com Google ou Apple. O VerseHub não recebe sua senha desses serviços.</li>
+                <li><strong>Perfil:</strong> nome público, biografia, foto, preferência de visibilidade e participação no ranking.</li>
+                <li><strong>Conteúdo criado por você:</strong> sentimentos e momentos relacionados a versículos, categorias personalizadas, favoritos, destaques, anotações e comentários.</li>
+                <li><strong>Interações e denúncias:</strong> curtidas, compartilhamentos registrados no app, denúncias de conteúdo e participação na comunidade.</li>
+                <li><strong>Progresso de uso:</strong> posição de leitura, sequência, pontos, nível e conquistas.</li>
+                <li><strong>Dados técnicos:</strong> token de sessão e informações essenciais de requisição, como endereço IP e registros temporários do servidor, usados para segurança e funcionamento.</li>
             </ul>
 
             <h3>2. Como usamos suas informações</h3>
             <ul>
-                <li>Autenticar e identificar sua conta no aplicativo.</li>
-                <li>Salvar e sincronizar suas classificações de versículos entre dispositivos.</li>
-                <li>Gerar estatísticas anônimas da comunidade sobre classificações de versículos.</li>
-                <li>Melhorar a experiência do usuário no aplicativo.</li>
+                <li>Autenticar sua conta e sincronizar seus dados entre dispositivos.</li>
+                <li>Entregar os recursos de leitura, organização, perfil, comunidade e gamificação.</li>
+                <li>Exibir somente o conteúdo que você decidiu tornar público e calcular contagens agregadas da comunidade.</li>
+                <li>Prevenir abuso, investigar denúncias, manter a segurança e corrigir falhas.</li>
             </ul>
 
             <h3>3. Compartilhamento de dados</h3>
-            <p>Não vendemos, alugamos ou compartilhamos suas informações pessoais com terceiros. As classificações de versículos são agregadas de forma anônima para gerar estatísticas da comunidade.</p>
+            <p>Não vendemos seus dados, não usamos seus dados para publicidade e não rastreamos você entre aplicativos ou sites de outras empresas. Podemos utilizar fornecedores de hospedagem e armazenamento apenas para operar o serviço, sujeitos a obrigações de segurança. Google e Apple tratam os dados necessários quando você escolhe o respectivo método de login.</p>
+            <p>Nome público, foto, biografia, comentários e contribuições podem ser vistos por outras pessoas somente conforme suas escolhas de perfil e publicação. Contagens agregadas podem aparecer sem revelar anotações privadas.</p>
 
-            <h3>4. Autenticação com Google</h3>
-            <p>Utilizamos o Google OAuth 2.0 para autenticação. Ao fazer login, recebemos apenas seu nome, e-mail e foto de perfil. Não temos acesso à sua senha do Google nem a outros dados da sua conta Google.</p>
+            <h3>4. Autenticação com Google e Apple</h3>
+            <p>Você pode entrar usando Google ou Apple. Recebemos apenas os dados autorizados pelo provedor, como identificador, nome, e-mail e foto quando disponível. A Apple permite ocultar seu e-mail por meio de um endereço privado de retransmissão.</p>
 
             <h3>5. Armazenamento e segurança</h3>
-            <p>Seus dados são armazenados em servidores seguros. Utilizamos criptografia HTTPS para todas as comunicações entre o aplicativo e nossos servidores. Tokens de autenticação são armazenados de forma segura no dispositivo.</p>
+            <p>Usamos HTTPS durante a transmissão, controles de acesso no servidor e armazenamento local protegido pelo sistema operacional. Mantemos os dados da conta enquanto ela existir ou pelo tempo necessário para segurança e obrigações legais. Registros técnicos têm retenção limitada.</p>
 
             <h3>6. Seus direitos</h3>
             <p>Você pode a qualquer momento:</p>
             <ul>
-                <li>Sair da sua conta e remover seus dados locais.</li>
-                <li>Solicitar a exclusão dos seus dados enviando um e-mail para o endereço abaixo.</li>
-                <li>Usar o aplicativo sem criar uma conta (com funcionalidades limitadas).</li>
+                <li>Editar seu nome, foto, biografia e preferências de visibilidade.</li>
+                <li>Usar a leitura sem criar uma conta, com funcionalidades limitadas.</li>
+                <li>Excluir permanentemente a conta e os dados associados dentro do app, em Perfil &gt; Excluir minha conta e meus dados.</li>
+                <li>Solicitar ajuda, acesso ou correção pelo e-mail abaixo.</li>
             </ul>
 
             <h3>7. Dados de menores</h3>
-            <p>O VerseHub não coleta intencionalmente dados de menores de 13 anos. Se você acredita que coletamos dados de um menor, entre em contato conosco.</p>
+            <p>O VerseHub não é direcionado a menores de 13 anos e não coleta intencionalmente seus dados. Se você acredita que uma criança forneceu dados, entre em contato para que possamos removê-los.</p>
 
             <h3>8. Alterações nesta política</h3>
-            <p>Podemos atualizar esta política periodicamente. Notificaremos sobre mudanças significativas através do aplicativo.</p>
+            <p>Podemos atualizar esta política quando os recursos ou requisitos legais mudarem. A data abaixo indica a versão vigente.</p>
 
             <h3>9. Contato</h3>
             <p>Para dúvidas sobre esta política de privacidade, entre em contato:</p>
             <p><strong>E-mail:</strong> <a href="mailto:contato@filipelab.com">contato@filipelab.com</a></p>
         </div>
 
-        <p class="updated">Última atualização: {{ date('d/m/Y') }}</p>
+        <p class="updated">Última atualização: 01/08/2026</p>
     </div>
 </body>
 </html>

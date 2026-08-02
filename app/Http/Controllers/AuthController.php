@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\AppleAuthService;
 use App\Services\GoogleAuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
@@ -15,7 +18,8 @@ use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 class AuthController extends Controller
 {
     public function __construct(
-        private GoogleAuthService $googleAuthService
+        private GoogleAuthService $googleAuthService,
+        private AppleAuthService $appleAuthService,
     ) {}
 
     /**
@@ -109,6 +113,90 @@ class AuthController extends Controller
                 'expires_in' => config('jwt.ttl') * 60,
             ],
         ]);
+    }
+
+    /**
+     * Authenticate an iOS user with a signed identity token from Apple.
+     * POST /api/auth/apple
+     */
+    public function loginWithApple(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'identity_token' => 'required|string|max:10000',
+            'given_name' => 'nullable|string|max:100',
+            'family_name' => 'nullable|string|max:100',
+        ]);
+
+        try {
+            $appleUser = $this->appleAuthService->verifyIdentityToken($validated['identity_token']);
+            $user = User::query()
+                ->where('provider', 'apple')
+                ->where('provider_id', $appleUser['sub'])
+                ->first();
+
+            if (! $user && $appleUser['email']) {
+                $user = User::where('email', $appleUser['email'])->first();
+            }
+
+            if (! $user && ! $appleUser['email']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A Apple não forneceu o e-mail para criar a conta. Revogue o acesso ao VerseHub nos ajustes do Apple ID e tente novamente.',
+                ], 422);
+            }
+
+            $providedName = trim(implode(' ', array_filter([
+                $validated['given_name'] ?? null,
+                $validated['family_name'] ?? null,
+            ])));
+
+            if (! $user) {
+                $user = User::create([
+                    'name' => $providedName ?: 'Leitor VerseHub',
+                    'email' => $appleUser['email'],
+                    'provider' => 'apple',
+                    'provider_id' => $appleUser['sub'],
+                    'password' => Hash::make(Str::random(32)),
+                    'email_verified_at' => $appleUser['email_verified'] ? now() : null,
+                ]);
+            } else {
+                $updates = [
+                    'provider' => 'apple',
+                    'provider_id' => $appleUser['sub'],
+                    'email_verified_at' => $user->email_verified_at ?? ($appleUser['email_verified'] ? now() : null),
+                ];
+                if ($providedName !== '' && ($user->name === '' || $user->name === 'Leitor VerseHub')) {
+                    $updates['name'] = $providedName;
+                }
+                $user->update($updates);
+            }
+
+            $token = JWTAuth::fromUser($user);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Successfully authenticated with Apple',
+                'data' => [
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'avatar' => $user->avatar,
+                        'google_id' => $user->google_id,
+                    ],
+                    'token' => $token,
+                    'token_type' => 'Bearer',
+                    'expires_in' => config('jwt.ttl') * 60,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('[AppleAuth] Login failed', ['message' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Não foi possível validar o acesso com a Apple.',
+            ], 401);
+        }
     }
 
     /**
@@ -590,5 +678,46 @@ class AuthController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Permanently delete the authenticated account and its related data.
+     * DELETE /api/auth/account
+     */
+    public function deleteAccount(): JsonResponse
+    {
+        $user = auth('api')->user();
+        $userId = $user->id;
+
+        DB::transaction(function () use ($user, $userId): void {
+            $affectedPostIds = DB::table('community_posts')
+                ->whereIn('bible_verse_id', DB::table('user_verse_categories')
+                    ->select('bible_verse_id')
+                    ->where('user_id', $userId))
+                ->pluck('id')
+                ->merge(DB::table('community_likes')->where('user_id', $userId)->pluck('community_post_id'))
+                ->merge(DB::table('community_comments')->where('user_id', $userId)->pluck('community_post_id'))
+                ->unique()
+                ->values();
+
+            $user->delete();
+
+            if ($affectedPostIds->isNotEmpty()) {
+                DB::table('community_posts')->whereIn('id', $affectedPostIds)->update([
+                    'classifiers_count' => DB::raw('(SELECT COUNT(DISTINCT user_id) FROM user_verse_categories WHERE bible_verse_id = community_posts.bible_verse_id)'),
+                    'classifications_count' => DB::raw('(SELECT COUNT(*) FROM user_verse_categories WHERE bible_verse_id = community_posts.bible_verse_id)'),
+                    'likes_count' => DB::raw('(SELECT COUNT(*) FROM community_likes WHERE community_post_id = community_posts.id)'),
+                    'comments_count' => DB::raw("(SELECT COUNT(*) FROM community_comments WHERE community_post_id = community_posts.id AND status = 'published')"),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        Storage::disk('public')->deleteDirectory('avatars/'.$userId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Account permanently deleted',
+        ]);
     }
 }

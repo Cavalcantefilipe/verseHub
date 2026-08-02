@@ -32,12 +32,14 @@ Route::prefix('auth')->group(function () {
     Route::post('google/token', [AuthController::class, 'loginWithGoogleToken']);
     Route::post('google/code', [AuthController::class, 'loginWithGoogleCode']);
     Route::post('google/mobile-login', [AuthController::class, 'loginWithGoogleMobile']);
+    Route::post('apple', [AuthController::class, 'loginWithApple']);
 
     // Protected routes (JWT)
     Route::middleware('auth:api')->group(function () {
         Route::get('user', [AuthController::class, 'user']);
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
+        Route::delete('account', [AuthController::class, 'deleteAccount']);
     });
 });
 
