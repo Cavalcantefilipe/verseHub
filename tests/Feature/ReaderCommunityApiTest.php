@@ -11,6 +11,7 @@ use App\Models\UserVerseCategory;
 use App\Services\CommunityFeedService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use Tests\TestCase;
@@ -85,9 +86,19 @@ class ReaderCommunityApiTest extends TestCase
             'show_ranking' => true,
         ], $headers)->assertOk();
 
-        $this->postJson('/api/me/profile-avatar', [
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'name' => 'Leitor Teste']);
+
+        $avatarUrl = $this->postJson('/api/me/profile-avatar', [
             'avatar' => UploadedFile::fake()->image('avatar.jpg', 300, 300),
-        ], $headers)->assertOk()->assertJsonStructure(['data' => ['avatar_url']]);
+        ], $headers)->assertOk()->assertJsonStructure(['data' => ['avatar_url']])->json('data.avatar_url');
+
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'avatar' => $avatarUrl]);
+
+        $post = app(CommunityFeedService::class)->refreshVerse($verse->id);
+        $this->postJson("/api/community/posts/{$post->id}/like", [], $headers)->assertCreated();
+        $this->getJson('/api/me/public-profile', $headers)
+            ->assertOk()
+            ->assertJsonPath('data.stats.likes_received', 1);
 
         $this->getJson("/api/community/users/{$user->id}")
             ->assertOk()
@@ -95,6 +106,41 @@ class ReaderCommunityApiTest extends TestCase
             ->assertJsonStructure(['data' => ['stats' => [
                 'points', 'level', 'streak_days', 'classifications', 'likes_received', 'comments_received',
             ], 'recent_contributions']]);
+    }
+
+    public function test_daily_activity_is_idempotent_and_recovers_historical_points(): void
+    {
+        $user = User::factory()->create();
+        $headers = $this->authHeaders($user);
+
+        foreach ([11, 12] as $verseId) {
+            DB::table('user_activity_events')->insert([
+                'user_id' => $user->id,
+                'event_type' => 'verse_classified',
+                'event_data' => json_encode(['bible_verse_id' => $verseId, 'is_new' => true]),
+                'created_at' => now(),
+            ]);
+        }
+
+        $this->postJson('/api/me/activity/daily', [], $headers)
+            ->assertCreated()
+            ->assertJsonPath('data.recorded', true)
+            ->assertJsonPath('data.points', 22)
+            ->assertJsonPath('data.streak_days', 1)
+            ->assertJsonPath('data.classifications', 2);
+
+        $this->postJson('/api/me/activity/daily', [], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.recorded', false)
+            ->assertJsonPath('data.points', 22);
+
+        $this->assertDatabaseCount('user_activity_days', 1);
+        $this->assertDatabaseHas('user_stats', [
+            'user_id' => $user->id,
+            'total_points' => 22,
+            'current_streak_days' => 1,
+            'classifications_count' => 2,
+        ]);
     }
 
     public function test_reading_state_and_saved_verse_are_upserts(): void

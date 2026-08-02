@@ -134,6 +134,7 @@ Route::middleware(['auth:api', 'active'])->group(function () {
     Route::get('me/public-profile', [ReaderController::class, 'profile']);
     Route::put('me/public-profile', [ReaderController::class, 'profile']);
     Route::post('me/profile-avatar', [ReaderController::class, 'updateAvatar']);
+    Route::post('me/activity/daily', [ReaderController::class, 'dailyActivity']);
     Route::put('me/push-devices', [PushDeviceController::class, 'upsert']);
     Route::delete('me/push-devices', [PushDeviceController::class, 'destroy']);
 });

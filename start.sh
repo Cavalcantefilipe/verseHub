@@ -17,6 +17,9 @@ echo ""
 echo "Running migrations..."
 php artisan migrate --force 2>&1
 
+echo "Ensuring public storage link..."
+php artisan storage:link --force 2>&1
+
 echo ""
 echo "Seeding database..."
 php artisan db:seed --force 2>&1
