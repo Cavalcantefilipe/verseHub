@@ -1,6 +1,18 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/v', function (Request $request) {
+    $reference = mb_substr((string) $request->query('reference', 'Salmos 23:1'), 0, 255);
+    $version = mb_substr((string) $request->query('version', 'NVI'), 0, 10);
+    $appUrl = 'bibleversemobile://v?'.http_build_query([
+        'reference' => $reference,
+        'version' => $version,
+    ]);
+
+    return view('verse-deep-link', compact('reference', 'version', 'appUrl'));
+})->name('verse.deep-link');
 
 Route::get('/', function () {
     return view('welcome');

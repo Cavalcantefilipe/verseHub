@@ -221,6 +221,7 @@ class VerseClassificationController extends Controller
                 'bible_verse_id' => $bibleVerse->id,
                 'reference' => $bibleVerse->reference,
                 'category_ids' => $validCategoryIds,
+                'is_new' => ! $existedBefore,
             ]
         );
 

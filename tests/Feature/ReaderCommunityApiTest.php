@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Models\UserVerseCategory;
 use App\Services\CommunityFeedService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use Tests\TestCase;
 
@@ -54,6 +56,45 @@ class ReaderCommunityApiTest extends TestCase
         $this->postJson("/api/community/posts/{$post->id}/like", [], $headers)->assertOk()->assertJsonPath('data.likes_count', 1);
         $this->postJson("/api/community/posts/{$post->id}/comments", ['body' => 'Uma palavra de esperança.'], $headers)->assertCreated();
         $this->assertDatabaseHas('community_posts', ['id' => $post->id, 'likes_count' => 1, 'comments_count' => 1]);
+        $this->assertDatabaseHas('user_stats', ['user_id' => $user->id, 'total_points' => 3]);
+    }
+
+    public function test_feed_accepts_each_indexed_sort_mode(): void
+    {
+        [, , $verse] = $this->classifiedVerse();
+        app(CommunityFeedService::class)->refreshVerse($verse->id);
+
+        foreach (['popular', 'recent', 'oldest', 'liked', 'commented'] as $sort) {
+            $this->getJson('/api/community-feed?sort='.$sort)
+                ->assertOk()
+                ->assertJsonPath('meta.sort', $sort);
+        }
+    }
+
+    public function test_profile_photo_and_public_impact_are_available(): void
+    {
+        Storage::fake('public');
+        [$user, , $verse] = $this->classifiedVerse();
+        app(CommunityFeedService::class)->refreshVerse($verse->id);
+        $headers = $this->authHeaders($user);
+
+        $this->putJson('/api/me/public-profile', [
+            'display_name' => 'Leitor Teste',
+            'bio' => 'Caminhando um capítulo por dia.',
+            'is_public' => true,
+            'show_ranking' => true,
+        ], $headers)->assertOk();
+
+        $this->postJson('/api/me/profile-avatar', [
+            'avatar' => UploadedFile::fake()->image('avatar.jpg', 300, 300),
+        ], $headers)->assertOk()->assertJsonStructure(['data' => ['avatar_url']]);
+
+        $this->getJson("/api/community/users/{$user->id}")
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Leitor Teste')
+            ->assertJsonStructure(['data' => ['stats' => [
+                'points', 'level', 'streak_days', 'classifications', 'likes_received', 'comments_received',
+            ], 'recent_contributions']]);
     }
 
     public function test_reading_state_and_saved_verse_are_upserts(): void
@@ -100,9 +141,17 @@ class ReaderCommunityApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Escolha no máximo três sentimentos.');
 
-        $this->postJson('/api/classify-auth', [...$payload, 'category_ids' => array_slice($categoryIds, 0, 3)], $headers)
+        $validPayload = [...$payload, 'category_ids' => array_slice($categoryIds, 0, 3)];
+        $this->postJson('/api/classify-auth', $validPayload, $headers)
             ->assertCreated()
             ->assertJsonCount(3, 'data.categories');
+        $this->postJson('/api/classify-auth', $validPayload, $headers)->assertOk();
+
+        $this->assertDatabaseHas('user_stats', [
+            'user_id' => $user->id,
+            'total_points' => 10,
+            'classifications_count' => 1,
+        ]);
     }
 
     private function classifiedVerse(): array

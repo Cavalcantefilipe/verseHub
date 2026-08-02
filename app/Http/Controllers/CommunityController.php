@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CommunityComment;
 use App\Models\CommunityPost;
+use App\Services\ActivityEventService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,12 +13,16 @@ use Illuminate\Validation\Rule;
 
 class CommunityController extends Controller
 {
+    public function __construct(
+        protected ActivityEventService $activityEventService
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'category_id' => 'nullable|integer|exists:categories,id',
             'category_ids' => ['nullable', 'string', 'regex:/^\d+(,\d+){0,9}$/'],
-            'sort' => ['nullable', Rule::in(['popular', 'recent'])],
+            'sort' => ['nullable', Rule::in(['popular', 'recent', 'oldest', 'liked', 'commented'])],
             'per_page' => 'nullable|integer|min:1|max:30',
             'cursor' => 'nullable|string',
         ]);
@@ -45,12 +50,28 @@ class CommunityController extends Controller
             });
         }
 
-        if ($sort === 'recent') {
-            $query->orderByDesc('community_posts.last_activity_at');
-        } else {
-            $query->orderByDesc('community_posts.classifiers_count');
-        }
-        $page = $query->orderByDesc('community_posts.id')->cursorPaginate($perPage);
+        $page = match ($sort) {
+            'recent' => $query
+                ->orderByDesc('community_posts.last_activity_at')
+                ->orderByDesc('community_posts.id')
+                ->cursorPaginate($perPage),
+            'oldest' => $query
+                ->orderBy('community_posts.created_at')
+                ->orderBy('community_posts.id')
+                ->cursorPaginate($perPage),
+            'liked' => $query
+                ->orderByDesc('community_posts.likes_count')
+                ->orderByDesc('community_posts.id')
+                ->cursorPaginate($perPage),
+            'commented' => $query
+                ->orderByDesc('community_posts.comments_count')
+                ->orderByDesc('community_posts.id')
+                ->cursorPaginate($perPage),
+            default => $query
+                ->orderByDesc('community_posts.classifiers_count')
+                ->orderByDesc('community_posts.id')
+                ->cursorPaginate($perPage),
+        };
         $postIds = collect($page->items())->pluck('id');
         $verseIds = collect($page->items())->pluck('bible_verse_id');
 
@@ -199,6 +220,12 @@ class CommunityController extends Controller
 
             return $comment;
         });
+
+        $this->activityEventService->track(
+            Auth::user(),
+            ActivityEventService::COMMENT_CREATED,
+            ['community_post_id' => $post->id, 'comment_id' => $comment->id],
+        );
 
         return response()->json(['data' => $comment], 201);
     }

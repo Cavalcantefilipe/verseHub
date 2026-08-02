@@ -112,6 +112,7 @@ Route::get('verse-stats', [VerseClassificationController::class, 'getVerseStats'
 Route::get('community-feed', [CommunityController::class, 'index'])->name('classifications.community-feed');
 Route::get('home', HomeController::class);
 Route::get('community/ranking', [ReaderController::class, 'ranking']);
+Route::get('community/users/{user}', [ReaderController::class, 'publicProfile'])->whereNumber('user');
 Route::get('community/posts/{post}/comments', [CommunityController::class, 'comments'])->whereNumber('post');
 
 Route::middleware('auth:api')->group(function () {
@@ -126,6 +127,7 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('me/saved-verses/{savedVerse}', [ReaderController::class, 'remove'])->whereNumber('savedVerse');
     Route::get('me/public-profile', [ReaderController::class, 'profile']);
     Route::put('me/public-profile', [ReaderController::class, 'profile']);
+    Route::post('me/profile-avatar', [ReaderController::class, 'updateAvatar']);
 });
 
 // ============================================

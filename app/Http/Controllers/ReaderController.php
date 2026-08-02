@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\UserSavedVerse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ReaderController extends Controller
 {
@@ -72,8 +74,25 @@ class ReaderController extends Controller
 
     public function profile(Request $request): JsonResponse
     {
+        $user = Auth::user();
+        $profile = DB::table('user_public_profiles')->where('user_id', $user->id)->first();
+
         if ($request->isMethod('get')) {
-            return response()->json(['data' => DB::table('user_public_profiles')->where('user_id', Auth::id())->first()]);
+            $stats = DB::table('user_stats')->where('user_id', $user->id)->first();
+
+            return response()->json(['data' => [
+                'display_name' => $profile?->display_name ?: $user->name,
+                'avatar_url' => $profile?->avatar_url ?: $user->avatar,
+                'bio' => $profile?->bio,
+                'is_public' => (bool) ($profile?->is_public ?? false),
+                'show_ranking' => (bool) ($profile?->show_ranking ?? false),
+                'stats' => [
+                    'points' => (int) ($stats?->total_points ?? 0),
+                    'level' => (int) ($stats?->current_level ?? 1),
+                    'streak_days' => (int) ($stats?->current_streak_days ?? 0),
+                    'classifications' => (int) ($stats?->classifications_count ?? 0),
+                ],
+            ]]);
         }
 
         $validated = $request->validate([
@@ -82,12 +101,107 @@ class ReaderController extends Controller
             'is_public' => 'required|boolean',
             'show_ranking' => 'required|boolean',
         ]);
+
         DB::table('user_public_profiles')->updateOrInsert(
-            ['user_id' => Auth::id()],
-            [...$validated, 'avatar_url' => Auth::user()->avatar, 'created_at' => now(), 'updated_at' => now()]
+            ['user_id' => $user->id],
+            [
+                ...$validated,
+                'avatar_url' => $profile?->avatar_url ?: $user->avatar,
+                'created_at' => $profile?->created_at ?? now(),
+                'updated_at' => now(),
+            ]
         );
 
-        return response()->json(['data' => DB::table('user_public_profiles')->where('user_id', Auth::id())->first()]);
+        return response()->json([
+            'data' => DB::table('user_public_profiles')->where('user_id', $user->id)->first(),
+        ]);
+    }
+
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120|dimensions:min_width=160,min_height=160,max_width=4096,max_height=4096',
+        ]);
+
+        $user = Auth::user();
+        $profile = DB::table('user_public_profiles')->where('user_id', $user->id)->first();
+        $previous = $profile?->avatar_url;
+        $path = $validated['avatar']->storePublicly('avatars/'.$user->id, 'public');
+        $avatarUrl = url(Storage::disk('public')->url($path));
+
+        DB::table('user_public_profiles')->updateOrInsert(
+            ['user_id' => $user->id],
+            [
+                'display_name' => $profile?->display_name ?: $user->name,
+                'avatar_url' => $avatarUrl,
+                'bio' => $profile?->bio,
+                'is_public' => (bool) ($profile?->is_public ?? false),
+                'show_ranking' => (bool) ($profile?->show_ranking ?? false),
+                'created_at' => $profile?->created_at ?? now(),
+                'updated_at' => now(),
+            ]
+        );
+
+        if ($previous && str_contains($previous, '/storage/avatars/')) {
+            $oldPath = ltrim(str_replace('/storage/', '', (string) parse_url($previous, PHP_URL_PATH)), '/');
+            if ($oldPath !== $path) {
+                Storage::disk('public')->delete($oldPath);
+            }
+        }
+
+        return response()->json(['data' => ['avatar_url' => $avatarUrl]]);
+    }
+
+    public function publicProfile(User $user): JsonResponse
+    {
+        $profile = DB::table('user_public_profiles')->where('user_id', $user->id)->first();
+        abort_unless($profile?->is_public, 404);
+
+        $stats = DB::table('user_stats')->where('user_id', $user->id)->first();
+        $impact = DB::table('community_posts as post')
+            ->where('post.status', 'published')
+            ->whereExists(function ($query) use ($user) {
+                $query->selectRaw('1')
+                    ->from('user_verse_categories as uvc')
+                    ->whereColumn('uvc.bible_verse_id', 'post.bible_verse_id')
+                    ->where('uvc.user_id', $user->id);
+            })
+            ->selectRaw('COALESCE(SUM(post.likes_count), 0) as likes_received')
+            ->selectRaw('COALESCE(SUM(post.comments_count), 0) as comments_received')
+            ->first();
+
+        $recent = DB::table('user_verse_categories as uvc')
+            ->join('bible_verses as verse', 'verse.id', '=', 'uvc.bible_verse_id')
+            ->leftJoin('community_posts as post', 'post.bible_verse_id', '=', 'verse.id')
+            ->where('uvc.user_id', $user->id)
+            ->groupBy('verse.id', 'verse.reference', 'verse.text', 'verse.version')
+            ->orderByRaw('MAX(uvc.created_at) DESC')
+            ->limit(10)
+            ->get([
+                'verse.id',
+                'verse.reference',
+                'verse.text',
+                'verse.version',
+                DB::raw('MAX(uvc.created_at) as shared_at'),
+                DB::raw('COALESCE(MAX(post.likes_count), 0) as likes_count'),
+                DB::raw('COALESCE(MAX(post.comments_count), 0) as comments_count'),
+            ]);
+
+        return response()->json(['data' => [
+            'user_id' => $user->id,
+            'name' => $profile->display_name ?: $user->name,
+            'avatar' => $profile->avatar_url ?: $user->avatar,
+            'bio' => $profile->bio,
+            'stats' => [
+                'points' => (int) ($stats?->total_points ?? 0),
+                'level' => (int) ($stats?->current_level ?? 1),
+                'streak_days' => (int) ($stats?->current_streak_days ?? 0),
+                'classifications' => (int) ($stats?->classifications_count ?? 0),
+                'likes_received' => (int) ($impact?->likes_received ?? 0),
+                'comments_received' => (int) ($impact?->comments_received ?? 0),
+            ],
+            'recent_contributions' => $recent,
+        ]]);
     }
 
     public function ranking(Request $request): JsonResponse
