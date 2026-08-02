@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BiblePassage;
 use App\Models\DailyVerse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -29,26 +28,11 @@ class HomeController extends Controller
                     'verse_number' => $verse->verse_number,
                 ])->values();
 
-            if ($scheduled->isNotEmpty()) {
-                $dailyVerses = $scheduled;
-            } elseif (($count = BiblePassage::where('version', 'nvi')->count()) > 0) {
-                $offset = abs(crc32($date)) % $count;
-                $passage = BiblePassage::where('version', 'nvi')->orderBy('id')->offset($offset)->first();
-                $dailyVerses = collect([[
-                    'reference' => "{$passage->book_name} {$passage->chapter}:{$passage->verse_number}",
-                    'text' => $passage->text,
-                    'version' => strtoupper($passage->version),
-                    'book_abbrev' => $passage->book_abbrev,
-                    'book_name' => $passage->book_name,
-                    'chapter' => $passage->chapter,
-                    'verse_number' => $passage->verse_number,
-                ]]);
-            } else {
-                // Nunca exibe como "versículo do dia" uma resposta externa
-                // incompleta. O conteúdo editorial precisa vir do índice local
-                // ou do agendamento revisado por um administrador.
-                $dailyVerses = collect();
-            }
+            // Destaques são sempre editoriais. O índice bíblico contém versos
+            // válidos para leitura, mas alguns registros curtos perdem contexto
+            // quando exibidos isoladamente. Por isso, nunca escolhemos um deles
+            // automaticamente como “versículo do dia”.
+            $dailyVerses = $scheduled;
 
             $moments = DB::table('categories as c')
                 ->join('category_groups as cg', function ($join) {
